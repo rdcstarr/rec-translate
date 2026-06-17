@@ -29,11 +29,17 @@ struct TranslationOutcome: Hashable, Sendable {
 }
 
 /// JSON body returned by proxy123.click `/translate/{source}/{target}`.
+/// `success` is optional so a generic Laravel error envelope (`{"message": ...}`, e.g. CSRF) still
+/// decodes and its text survives.
 struct ProxyTranslateResponse: Decodable, Sendable {
-    let success: Bool
+    let success: Bool?
     let translation: String?
     let detected: String?
     let error: String?
+    let message: String?
+
+    /// Best available human-readable error text.
+    var errorText: String? { error ?? message }
 }
 
 /// What a `TranslationProvider` returns: the translated text plus an optional detected source code

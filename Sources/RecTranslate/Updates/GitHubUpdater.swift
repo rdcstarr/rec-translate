@@ -86,9 +86,20 @@ final class GitHubUpdater: ObservableObject {
         return try JSONDecoder().decode(Release.self, from: data)
     }
 
-    /// Numeric (dotted) version comparison: "0.1.10" > "0.1.2".
+    /// Dotted-version comparison by numeric components: "0.1.10" > "0.1.2", and "1.0.0" == "1.0"
+    /// (so a tag that only adds a trailing ".0" never triggers a spurious update).
     private func isVersion(_ candidate: String, newerThan current: String) -> Bool {
-        candidate.compare(current, options: .numeric) == .orderedDescending
+        func components(_ s: String) -> [Int] {
+            s.split(separator: ".").map { part in Int(part.prefix(while: { $0.isNumber })) ?? 0 }
+        }
+        let a = components(candidate)
+        let b = components(current)
+        for i in 0 ..< max(a.count, b.count) {
+            let x = i < a.count ? a[i] : 0
+            let y = i < b.count ? b[i] : 0
+            if x != y { return x > y }
+        }
+        return false
     }
 
     // MARK: - UI
@@ -123,14 +134,18 @@ final class GitHubUpdater: ObservableObject {
     /// Run the installer detached (it downloads the latest release, installs to /Applications,
     /// clears quarantine, and reopens the app), then quit so it can replace this bundle.
     private func installUpdate() {
-        let command = "/bin/bash -c \"$(curl -fsSL \(installScriptURL))\" >/tmp/rectranslate-update.log 2>&1"
+        // Fully detach the installer (nohup + background + disown) so it survives this app's
+        // termination, and run curl INSIDE the detached process — not in the parent shell's
+        // command substitution — so a quit mid-download can't kill it.
+        let detached = "nohup /bin/bash -c 'curl -fsSL \(installScriptURL) | /bin/bash' "
+            + ">/tmp/rectranslate-update.log 2>&1 & disown"
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = ["-c", command]
+        process.arguments = ["-c", detached]
         do {
             try process.run()
             Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(400))
+                try? await Task.sleep(for: .milliseconds(500))
                 NSApp.terminate(nil)
             }
         } catch {

@@ -44,7 +44,7 @@ struct ProxyTranslateProvider: TranslationProvider {
 
         switch http.statusCode {
         case 200:
-            guard let decoded, decoded.success, let translation = decoded.translation else {
+            guard let decoded, decoded.success == true, let translation = decoded.translation else {
                 throw TranslationError.decoding
             }
             return ProviderResult(translation: translation, detected: decoded.detected)
@@ -53,11 +53,11 @@ struct ProxyTranslateProvider: TranslationProvider {
         case 403:
             throw TranslationError.forbidden
         case 422:
-            throw TranslationError.invalidInput(decoded?.error ?? "Invalid language or text.")
+            throw TranslationError.invalidInput(decoded?.errorText ?? "Invalid language or text.")
         case 502:
-            throw TranslationError.upstreamFailure(decoded?.error)
+            throw TranslationError.upstreamFailure(decoded?.errorText)
         default:
-            throw TranslationError.unexpectedStatus(http.statusCode, decoded?.error)
+            throw TranslationError.unexpectedStatus(http.statusCode, decoded?.errorText)
         }
     }
 }
