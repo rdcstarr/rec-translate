@@ -26,7 +26,12 @@ let package = Package(
             dependencies: [
                 "KeyboardShortcuts",
             ],
-            path: "Sources/RecTranslate"
+            path: "Sources/RecTranslate",
+            resources: [
+                // Flag PNGs are produced from Resources/Flags-src by Scripts/rasterize-flags.sh
+                // before the build (macOS has no runtime SVG decoder).
+                .copy("Resources/Flags"),
+            ]
         )
     ]
 )

@@ -15,6 +15,11 @@ APP="$BUILD_DIR/$APP_NAME.app"
 VERSION="${1:-0.1.0}"
 BUILD_NUMBER="${2:-1}"
 
+# Rasterize the flag SVGs into PNG resources before building (macOS has no runtime SVG decoder).
+if [ -x "$ROOT/Scripts/rasterize-flags.sh" ]; then
+  "$ROOT/Scripts/rasterize-flags.sh" || echo "WARNING: flag rasterization failed; flags fall back to emoji"
+fi
+
 echo "==> Building $APP_NAME $VERSION ($BUILD_NUMBER) [universal, $CONFIG]"
 swift build -c "$CONFIG" --arch arm64 --arch x86_64
 

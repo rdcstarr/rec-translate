@@ -13,6 +13,7 @@ struct PopupView: View {
     @State private var showingHistory = false
     @State private var picking: PickerField?
     @State private var query = ""
+    @State private var focusRequested = false
 
     let onClose: () -> Void
 
@@ -109,7 +110,7 @@ struct PopupView: View {
             }
         } label: {
             HStack(spacing: 5) {
-                Text(lang.flag)
+                FlagImage(code: lang.code, width: 20, height: 14)
                 Text(lang.name).lineLimit(1)
                 Image(systemName: "chevron.down").font(.caption2).opacity(0.6)
             }
@@ -126,7 +127,16 @@ struct PopupView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 15))
                 .focused($searchFocused)
-                .onAppear { searchFocused = true }
+                // Autofocus: the panel is key (canBecomeKey), and we defer the focus write by one
+                // state cycle (onAppear -> onChange) so it lands AFTER the field is committed into
+                // the focus tree. Uses only non-@Sendable closures (no self capture across actors).
+                .onAppear { focusRequested = true }
+                .onChange(of: focusRequested) { _, requested in
+                    if requested {
+                        searchFocused = true
+                        focusRequested = false
+                    }
+                }
                 .onKeyPress(.escape) {
                     closePicker()
                     return .handled
@@ -139,7 +149,7 @@ struct PopupView: View {
                             select(lang, for: field)
                         } label: {
                             HStack(spacing: 8) {
-                                Text(lang.flag)
+                                FlagImage(code: lang.code)
                                 Text(lang.name)
                                 Spacer()
                                 if code(for: field) == lang.code {
@@ -258,9 +268,15 @@ struct PopupView: View {
                             showingHistory = false
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("\(Languages.flag(for: entry.sourceCode)) \(Languages.name(for: entry.sourceCode)) → \(Languages.flag(for: entry.targetCode)) \(Languages.name(for: entry.targetCode))")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+                                HStack(spacing: 4) {
+                                    FlagImage(code: entry.sourceCode, width: 16, height: 12)
+                                    Text(Languages.name(for: entry.sourceCode))
+                                    Image(systemName: "arrow.right").font(.caption2)
+                                    FlagImage(code: entry.targetCode, width: 16, height: 12)
+                                    Text(Languages.name(for: entry.targetCode))
+                                }
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
                                 Text(entry.original)
                                     .lineLimit(1)
                                     .foregroundStyle(.secondary)

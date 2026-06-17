@@ -12,6 +12,9 @@ build/
 # macOS
 .DS_Store
 
+# Generated flag PNGs (rasterized from Resources/Flags-src at build time)
+Sources/RecTranslate/Resources/Flags/*.png
+
 # Secrets / local config — never commit these
 *.p12
 *.cer
