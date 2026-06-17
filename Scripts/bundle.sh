@@ -32,7 +32,11 @@ cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
 
-if [ -f "$ROOT/Resources/AppIcon.icns" ]; then
+# App icon: compile AppIcon.icns from the iconset with Apple's iconutil (macOS), or copy a prebuilt one.
+if [ -d "$ROOT/Resources/AppIcon.iconset" ]; then
+  iconutil -c icns "$ROOT/Resources/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
+  echo "==> Built AppIcon.icns from iconset"
+elif [ -f "$ROOT/Resources/AppIcon.icns" ]; then
   cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 fi
 
