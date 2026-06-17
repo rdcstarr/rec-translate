@@ -16,6 +16,7 @@ struct PopupView: View {
     @State private var picking: PickerField?
     @State private var query = ""
     @State private var focusRequested = false
+    @State private var moreHovering = false
 
     let onClose: () -> Void
 
@@ -84,10 +85,11 @@ struct PopupView: View {
                 vm.swapLanguages()
             } label: {
                 Image(systemName: "arrow.left.arrow.right")
+                    .font(.system(size: 12, weight: .semibold))
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(IconButtonStyle())
             .disabled(preferences.sourceCode == Language.auto.code)
-            .help("Swap languages")
+            .help(preferences.sourceCode == Language.auto.code ? "Pick a source language to swap" : "Swap languages")
 
             languageButton(.target)
 
@@ -98,16 +100,17 @@ struct PopupView: View {
             } label: {
                 Image(systemName: "clock.arrow.circlepath")
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(IconButtonStyle())
             .help("History")
             .disabled(history.entries.isEmpty)
 
             Button {
+                onClose() // hide the popup first so the Settings window reliably comes to the front
                 NotificationCenter.default.post(name: .openSettingsRequest, object: nil)
             } label: {
                 Image(systemName: "gearshape")
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(IconButtonStyle())
             .help("Settings")
 
             Menu {
@@ -117,11 +120,19 @@ struct PopupView: View {
                 Divider()
                 Button("Quit Rec Translate") { NSApp.terminate(nil) }
             } label: {
-                Image(systemName: "ellipsis.circle")
+                Image(systemName: "ellipsis")
+                    .frame(width: 28, height: 24)
+                    .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(moreHovering ? 0.09 : 0))
+            )
+            .onHover { moreHovering = $0 }
+            .animation(.easeOut(duration: 0.12), value: moreHovering)
             .help("More")
         }
         .foregroundStyle(.secondary)
@@ -282,23 +293,37 @@ struct PopupView: View {
     // MARK: - Input + result
 
     private var inputField: some View {
-        TextField("Type or paste text, then press Return…", text: $vm.inputText, axis: .vertical)
-            .textFieldStyle(.plain)
-            .font(.system(size: 18))
-            .lineLimit(1...8)
-            .focused($inputFocused)
-            .onKeyPress(phases: .down) { press in
-                if press.key == .return {
-                    if press.modifiers.contains(.shift) { return .ignored }
-                    vm.requestTranslate()
-                    return .handled
+        HStack(alignment: .top, spacing: 6) {
+            TextField("Type or paste text — Return translates, ⇧Return = new line", text: $vm.inputText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(.system(size: 18))
+                .lineLimit(1 ... 8)
+                .focused($inputFocused)
+                .onKeyPress(phases: .down) { press in
+                    if press.key == .return {
+                        // Shift+Return inserts a newline; plain Return translates.
+                        if NSEvent.modifierFlags.contains(.shift) { return .ignored }
+                        vm.requestTranslate()
+                        return .handled
+                    }
+                    if press.key == .escape {
+                        onClose()
+                        return .handled
+                    }
+                    return .ignored
                 }
-                if press.key == .escape {
-                    onClose()
-                    return .handled
+
+            if !vm.inputText.isEmpty {
+                Button {
+                    vm.clearInput()
+                    inputFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
-                return .ignored
+                .buttonStyle(.borderless)
+                .help("Clear")
             }
+        }
     }
 
     private func resultView(_ result: TranslationOutcome) -> some View {

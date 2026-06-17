@@ -25,18 +25,21 @@ struct HiddenWindowView: View {
     private func openSettingsWindow() {
         Task { @MainActor in
             NSApp.setActivationPolicy(.regular)
-            try? await Task.sleep(for: .milliseconds(80))
             NSApp.activate(ignoringOtherApps: true)
             openSettings()
-            try? await Task.sleep(for: .milliseconds(150))
 
-            // Prefer SwiftUI's known (private) Settings identifier, then fall back to a structural
-            // match so a future identifier change still finds the window.
-            let settingsWindow = NSApp.windows.first { $0.identifier?.rawValue == "com.apple.SwiftUI.Settings" }
-                ?? NSApp.windows.first { window in
-                    window.isVisible && window.canBecomeKey && !(window is FloatingPanel)
-                        && window.identifier?.rawValue != "hidden"
-                }
+            // Poll for the Settings window (it can take a moment to appear on macOS 26/27), then
+            // force it to the front. Prefer SwiftUI's known identifier, then a structural fallback.
+            var settingsWindow: NSWindow?
+            for _ in 0 ..< 15 {
+                try? await Task.sleep(for: .milliseconds(100))
+                settingsWindow = NSApp.windows.first { $0.identifier?.rawValue == "com.apple.SwiftUI.Settings" }
+                    ?? NSApp.windows.first { window in
+                        window.isVisible && window.canBecomeKey && !(window is FloatingPanel)
+                            && window.identifier?.rawValue != "hidden"
+                    }
+                if settingsWindow != nil { break }
+            }
 
             guard let window = settingsWindow else {
                 // Never leave a menu-bar agent stuck as a foreground (.regular) app.
@@ -44,6 +47,7 @@ struct HiddenWindowView: View {
                 return
             }
 
+            NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
 

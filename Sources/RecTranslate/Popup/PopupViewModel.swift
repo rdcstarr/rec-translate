@@ -94,6 +94,13 @@ final class PopupViewModel: ObservableObject {
         }
     }
 
+    func clearInput() {
+        translateTask?.cancel()
+        inputText = ""
+        result = nil
+        errorMessage = nil
+    }
+
     func copyResult() {
         guard let translation = result?.translation else { return }
         copyToPasteboard(translation)
