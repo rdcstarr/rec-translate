@@ -1,44 +1,54 @@
 import SwiftUI
 
-/// The ChatGPT "Chat Bar"-style popup contents: a language bar, a large input field
-/// (Return translates, ⇧Return inserts a newline, Esc closes), the result with a Copy
-/// action, and a compact recent-history list.
+/// The ChatGPT "Chat Bar"-style popup: a language bar (flag + name buttons), a large input field
+/// (Return translates, ⇧Return = newline, Esc closes), the result with Copy, and history.
+/// Tapping a language opens an in-panel searchable chooser (autofocused search, flag list).
 struct PopupView: View {
     @EnvironmentObject private var vm: PopupViewModel
     @EnvironmentObject private var preferences: Preferences
     @EnvironmentObject private var history: HistoryStore
 
     @FocusState private var inputFocused: Bool
+    @FocusState private var searchFocused: Bool
     @State private var showingHistory = false
+    @State private var picking: PickerField?
+    @State private var query = ""
 
     let onClose: () -> Void
+
+    private enum PickerField { case source, target }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             languageBar
-            inputField
 
-            if vm.isTranslating {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Translating…").foregroundStyle(.secondary)
-                }
-                .font(.callout)
-            }
+            if let picking {
+                languageChooser(picking)
+            } else {
+                inputField
 
-            if let error = vm.errorMessage {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
+                if vm.isTranslating {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Translating…").foregroundStyle(.secondary)
+                    }
                     .font(.callout)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+                }
 
-            if let result = vm.result {
-                resultView(result)
-            }
+                if let error = vm.errorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
-            if showingHistory, !history.entries.isEmpty {
-                historyView
+                if let result = vm.result {
+                    resultView(result)
+                }
+
+                if showingHistory, !history.entries.isEmpty {
+                    historyView
+                }
             }
         }
         .padding(18)
@@ -50,23 +60,18 @@ struct PopupView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: .black.opacity(0.30), radius: 26, x: 0, y: 12)
-        .padding(24) // room for the shadow inside the clear window
+        .padding(24)
         .onAppear { focusInput() }
-        .onReceive(NotificationCenter.default.publisher(for: .focusPopupInput)) { _ in focusInput() }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPopupInput)) { _ in
+            if picking == nil { focusInput() }
+        }
     }
 
-    // MARK: - Sections
+    // MARK: - Language bar
 
     private var languageBar: some View {
         HStack(spacing: 8) {
-            Picker("", selection: $preferences.sourceCode) {
-                ForEach(Languages.sources) { lang in
-                    Text(lang.name).tag(lang.code)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .fixedSize()
+            languageButton(.source)
 
             Button {
                 vm.swapLanguages()
@@ -77,14 +82,7 @@ struct PopupView: View {
             .disabled(preferences.sourceCode == Language.auto.code)
             .help("Swap languages")
 
-            Picker("", selection: $preferences.targetCode) {
-                ForEach(Languages.targets) { lang in
-                    Text(lang.name).tag(lang.code)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .fixedSize()
+            languageButton(.target)
 
             Spacer()
 
@@ -99,6 +97,97 @@ struct PopupView: View {
         }
         .foregroundStyle(.secondary)
     }
+
+    private func languageButton(_ field: PickerField) -> some View {
+        let lang = Languages.language(for: code(for: field))
+        return Button {
+            if picking == field {
+                closePicker()
+            } else {
+                picking = field
+                query = ""
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(lang.flag)
+                Text(lang.name).lineLimit(1)
+                Image(systemName: "chevron.down").font(.caption2).opacity(0.6)
+            }
+        }
+        .buttonStyle(.borderless)
+        .help(field == .source ? "Source language" : "Target language")
+    }
+
+    // MARK: - Searchable chooser (in-panel, no extra window)
+
+    private func languageChooser(_ field: PickerField) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Search language…", text: $query)
+                .textFieldStyle(.plain)
+                .font(.system(size: 15))
+                .focused($searchFocused)
+                .onAppear { searchFocused = true }
+                .onKeyPress(.escape) {
+                    closePicker()
+                    return .handled
+                }
+            Divider()
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(filtered(field)) { lang in
+                        Button {
+                            select(lang, for: field)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(lang.flag)
+                                Text(lang.name)
+                                Spacer()
+                                if code(for: field) == lang.code {
+                                    Image(systemName: "checkmark").font(.caption).foregroundStyle(.tint)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .frame(maxHeight: 240)
+        }
+    }
+
+    private func options(for field: PickerField) -> [Language] {
+        field == .source ? Languages.sources : Languages.targets
+    }
+
+    private func filtered(_ field: PickerField) -> [Language] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let all = options(for: field)
+        guard !q.isEmpty else { return all }
+        return all.filter { $0.name.lowercased().contains(q) || $0.code.lowercased().contains(q) }
+    }
+
+    private func code(for field: PickerField) -> String {
+        field == .source ? preferences.sourceCode : preferences.targetCode
+    }
+
+    @MainActor private func select(_ lang: Language, for field: PickerField) {
+        switch field {
+        case .source: preferences.sourceCode = lang.code
+        case .target: preferences.targetCode = lang.code
+        }
+        closePicker()
+    }
+
+    @MainActor private func closePicker() {
+        picking = nil
+        query = ""
+        focusInput()
+    }
+
+    // MARK: - Input + result
 
     private var inputField: some View {
         TextField("Type or paste text, then press Return…", text: $vm.inputText, axis: .vertical)
@@ -169,7 +258,7 @@ struct PopupView: View {
                             showingHistory = false
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("\(Languages.name(for: entry.sourceCode)) → \(Languages.name(for: entry.targetCode))")
+                                Text("\(Languages.flag(for: entry.sourceCode)) \(Languages.name(for: entry.sourceCode)) → \(Languages.flag(for: entry.targetCode)) \(Languages.name(for: entry.targetCode))")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                                 Text(entry.original)

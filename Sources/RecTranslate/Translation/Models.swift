@@ -8,11 +8,12 @@ import Foundation
 struct Language: Identifiable, Hashable, Sendable {
     let code: String
     let name: String
+    let flag: String
 
     var id: String { code }
 
-    /// Source-only sentinel: detect the language on-device, then send the detected code.
-    static let auto = Language(code: "auto", name: "Detect language")
+    /// Source-only sentinel: the server detects the language (Google) and returns it.
+    static let auto = Language(code: "auto", name: "Detect language", flag: "🌐")
 
     var isAuto: Bool { code == Language.auto.code }
 }
