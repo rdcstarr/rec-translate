@@ -14,7 +14,7 @@ struct PopupView: View {
     @EnvironmentObject private var history: HistoryStore
     @EnvironmentObject private var updater: GitHubUpdater
 
-    @FocusState private var inputFocused: Bool
+    @State private var inputFocusTick = 0 // bumped to (re)focus the NSTextView-backed input
     @FocusState private var searchFocused: Bool
     @State private var showingHistory = false
     @State private var picking: PickerField?
@@ -265,34 +265,29 @@ struct PopupView: View {
 
     private var inputField: some View {
         HStack(alignment: .top, spacing: 6) {
-            // TextField (not TextEditor) so there's no scroll-view chrome / black scroller line.
-            TextField("Type or paste text to translate…", text: $vm.inputText, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(Theme.Fonts.largeBody)
-                .lineLimit(1 ... 8)
-                .focused($inputFocused)
-                .onKeyPress(phases: .down) { press in
-                    if press.key == .return {
-                        // TextField(axis:.vertical) doesn't insert a newline on its own, so do it
-                        // explicitly for Shift+Return; plain Return translates.
-                        if NSEvent.modifierFlags.contains(.shift) {
-                            vm.inputText += "\n"
-                            return .handled
-                        }
-                        vm.requestTranslate()
-                        return .handled
-                    }
-                    if press.key == .escape {
-                        onClose()
-                        return .handled
-                    }
-                    return .ignored
+            ZStack(alignment: .topLeading) {
+                if vm.inputText.isEmpty {
+                    Text("Type or paste text to translate…")
+                        .font(Theme.Fonts.largeBody)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 2) // align with the text view's container inset
+                        .allowsHitTesting(false)
                 }
+                // NSTextView-backed: Return translates, Shift+Return = newline at the cursor, Esc closes.
+                MultilineTextField(
+                    text: $vm.inputText,
+                    minHeight: 30,
+                    maxHeight: 170,
+                    focusTick: inputFocusTick,
+                    onSubmit: { vm.requestTranslate() },
+                    onEscape: { onClose() }
+                )
+            }
 
             if !vm.inputText.isEmpty {
                 ClearButton(help: "Clear", variant: .icon) {
                     vm.clearInput()
-                    inputFocused = true
+                    inputFocusTick += 1
                 }
             }
         }
@@ -387,6 +382,6 @@ struct PopupView: View {
     }
 
     @MainActor private func focusInput() {
-        inputFocused = true
+        inputFocusTick += 1
     }
 }
