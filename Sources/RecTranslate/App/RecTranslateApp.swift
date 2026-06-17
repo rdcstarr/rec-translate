@@ -13,8 +13,8 @@ struct RecTranslateApp: App {
         .defaultSize(width: 1, height: 1)
         .windowStyle(.hiddenTitleBar)
 
-        MenuBarExtra("RecTranslate", systemImage: "character.bubble.fill") {
-            Button("Open RecTranslate") {
+        MenuBarExtra("Rec Translate", systemImage: "character.bubble.fill") {
+            Button("Open Rec Translate") {
                 AppEnvironment.shared.panelController.show()
             }
             Button("Settings…") {
@@ -30,7 +30,7 @@ struct RecTranslateApp: App {
 
             Divider()
 
-            Button("Quit RecTranslate") {
+            Button("Quit Rec Translate") {
                 NSApp.terminate(nil)
             }
             .keyboardShortcut("q", modifiers: .command)

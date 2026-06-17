@@ -55,7 +55,7 @@ final class GitHubUpdater: ObservableObject {
             if isVersion(latestVersion, newerThan: currentVersion) {
                 presentUpdatePrompt(latestVersion: latestVersion, notes: latest.body)
             } else if userInitiated {
-                presentInfo(title: "You're up to date", message: "RecTranslate v\(currentVersion) is the latest version.")
+                presentInfo(title: "You're up to date", message: "Rec Translate v\(currentVersion) is the latest version.")
             }
         } catch {
             if userInitiated {
@@ -107,7 +107,7 @@ final class GitHubUpdater: ObservableObject {
     private func presentUpdatePrompt(latestVersion: String, notes: String?) {
         let alert = NSAlert()
         alert.messageText = "Update available — v\(latestVersion)"
-        var info = "You have v\(currentVersion). Install now? RecTranslate will quit, update, and reopen."
+        var info = "You have v\(currentVersion). Install now? Rec Translate will quit, update, and reopen."
         if let notes, !notes.isEmpty {
             info += "\n\n" + String(notes.prefix(500))
         }

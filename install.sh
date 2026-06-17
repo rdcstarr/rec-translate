@@ -49,7 +49,7 @@ echo "==> Launching..."
 open "${DEST}/${APP}"
 
 echo ""
-echo "Done. RecTranslate is installed in ${DEST} and running -- look for the speech-bubble icon in the menu bar."
+echo "Done. Rec Translate is installed in ${DEST} and running -- look for the speech-bubble icon in the menu bar."
 echo ""
 echo "Next steps:"
 echo "  1. Click the menu-bar icon, then Settings..."

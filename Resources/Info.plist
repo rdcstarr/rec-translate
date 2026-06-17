@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>RecTranslate</string>
+	<string>Rec Translate</string>
 	<key>CFBundleDisplayName</key>
-	<string>RecTranslate</string>
+	<string>Rec Translate</string>
 	<key>CFBundleExecutable</key>
 	<string>RecTranslate</string>
 	<key>CFBundleIdentifier</key>
