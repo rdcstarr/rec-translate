@@ -30,13 +30,9 @@ struct TranslationService: Sendable {
         }
 
         let result = try await provider.translate(text: trimmed, source: resolvedSource, target: targetCode)
-
-        // Google lowercases single-word translations; mirror the source's leading capitalization
-        // so "Hello" -> "Bună" (not "bună").
-        var translation = result.translation
-        if let sourceLetter = trimmed.first(where: { $0.isLetter }), sourceLetter.isUppercase {
-            translation = translation.uppercasingFirstLetter()
-        }
+        // Capitalization + terminal punctuation are matched per line on the server (it has each
+        // source line), so the client passes the translation through unchanged.
+        let translation = result.translation
 
         // What to show as "Detected:" — on-device wins, else the server's src when we asked for auto.
         let detectedSourceName: String?
@@ -59,13 +55,5 @@ struct TranslationService: Sendable {
             targetCode: targetCode,
             detectedSourceName: detectedSourceName
         )
-    }
-}
-
-private extension String {
-    /// Uppercases the first alphabetic character (leaving leading punctuation/quotes intact).
-    func uppercasingFirstLetter() -> String {
-        guard let index = firstIndex(where: { $0.isLetter }), self[index].isLowercase else { return self }
-        return self[..<index] + self[index].uppercased() + self[self.index(after: index)...]
     }
 }

@@ -26,6 +26,19 @@ final class PopupViewModel: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] text in self?.autoTranslateIfNeeded(text) }
             .store(in: &cancellables)
+
+        // Clear a stale result immediately when the input becomes empty (e.g. select-all + cut),
+        // so the old translation doesn't linger.
+        $inputText
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .removeDuplicates()
+            .sink { [weak self] isEmpty in
+                guard isEmpty, let self else { return }
+                self.translateTask?.cancel()
+                self.result = nil
+                self.errorMessage = nil
+            }
+            .store(in: &cancellables)
     }
 
     private func autoTranslateIfNeeded(_ text: String) {
