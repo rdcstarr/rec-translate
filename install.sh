@@ -38,6 +38,13 @@ if [ ! -w "${DEST}" ]; then
   mkdir -p "${DEST}"
 fi
 
+# Quit any running instance so the `open` below launches the NEW version — `open` only activates
+# an already-running app, it does not relaunch it.
+echo "==> Closing any running instance..."
+osascript -e 'quit app "Rec Translate"' >/dev/null 2>&1 || true
+killall RecTranslate >/dev/null 2>&1 || true
+sleep 1
+
 echo "==> Installing to ${DEST} ..."
 rm -rf "${DEST:?}/${APP}"
 ditto "${SRC}" "${DEST}/${APP}"
