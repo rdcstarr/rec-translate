@@ -101,9 +101,18 @@ Pushing a tag like `v1.0.0` runs `.github/workflows/release.yml` on a macOS runn
 
 ### Installing
 
-Download `RecTranslate.dmg` from the GitHub Release, open it, drag the app to Applications.
-Because it's signed + notarized, it opens with **no Gatekeeper warning**, and updates arrive
-in-app (Settings → Updates, or automatically).
+**Via Homebrew** (personal tap — works once a signed release is published):
+
+```sh
+brew install --cask rdcstarr/tap/rec-translate
+```
+
+This installs the latest notarized DMG; the app then self-updates via Sparkle, so Homebrew does
+not manage upgrades (the cask uses `auto_updates true`). Tap: https://github.com/rdcstarr/homebrew-tap
+
+**Or manually:** download `RecTranslate.dmg` from the GitHub Release, open it, drag the app to
+Applications. Because it's signed + notarized, it opens with **no Gatekeeper warning**, and updates
+arrive in-app (Settings → Updates, or automatically).
 
 ---
 
