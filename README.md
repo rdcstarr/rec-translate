@@ -17,6 +17,22 @@ Target OS: **macOS 26+**. Build toolchain: **Xcode 26 / Swift 6.2**.
 > ⚠️ This repo is developed on Linux but **cannot be compiled there** — building a macOS
 > AppKit/SwiftUI app needs macOS. Use the GitHub Actions macOS runner (recommended) or a Mac.
 
+## Install (free — one command)
+
+On your Mac (macOS 26):
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/rdcstarr/rec-translate/main/install.sh)"
+```
+
+This downloads the latest build, installs it to Applications, clears the Gatekeeper quarantine,
+and launches it (look for the speech-bubble icon in the menu bar). Then open **Settings…** and paste
+your rec-app translate API key (base URL defaults to `https://rec-app.recweb.app`).
+
+These free builds are **ad-hoc signed, not notarized** — that's why the installer clears the
+quarantine for you. For a notarized build with automatic Sparkle updates (and no quarantine step),
+add an Apple Developer ID and use the signed release path — see [Releasing](#releasing--auto-update-github-actions).
+
 ---
 
 ## How translation works

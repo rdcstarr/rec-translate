@@ -3,8 +3,9 @@ name: Release
 # Triggered by pushing a tag like v1.2.3. Builds a universal app, Developer ID signs +
 # notarizes it, builds a DMG, generates a Sparkle appcast, and publishes a GitHub Release.
 on:
-  push:
-    tags: ['v*']
+  # Signed + notarized path. MANUAL only — run this from the Actions tab once you've added the
+  # Developer ID / notarization / Sparkle secrets (see README). The default tag-triggered path is
+  # the free, ad-hoc release-free.yml.
   workflow_dispatch:
 
 permissions:

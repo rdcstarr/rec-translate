@@ -1,0 +1,44 @@
+name: Release (free, ad-hoc)
+
+# Free distribution path — no Apple account / secrets needed. On a `v*` tag it builds a universal
+# app, ad-hoc signs it, zips it, and publishes a GitHub Release asset `RecTranslate.zip` that the
+# one-command installer (install.sh) downloads. These builds are NOT notarized; install.sh clears
+# the Gatekeeper quarantine on the user's machine.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-free:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Derive version
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "version=${TAG:-0.0.0}" >> "$GITHUB_OUTPUT"
+
+      - name: Bundle .app
+        run: ./Scripts/bundle.sh "${{ steps.ver.outputs.version }}" "${{ github.run_number }}"
+
+      - name: Ad-hoc sign
+        run: codesign --force --deep --sign - build/RecTranslate.app
+
+      - name: Zip (RecTranslate.app at archive root, symlinks preserved)
+        run: cd build && ditto -c -k --sequesterRsrc --keepParent RecTranslate.app RecTranslate.zip
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/RecTranslate.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
