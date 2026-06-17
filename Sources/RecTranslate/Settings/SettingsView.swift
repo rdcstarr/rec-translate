@@ -19,7 +19,7 @@ struct SettingsView: View {
             updatesTab
                 .tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
         }
-        .frame(width: 480)
+        .frame(width: Theme.Metrics.settingsWidth)
         .onAppear { apiKeyStored = (TokenStore.apiKey?.isEmpty == false) }
     }
 

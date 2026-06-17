@@ -4,6 +4,10 @@ import AppKit
 /// The ChatGPT "Chat Bar"-style popup: a language bar (flag + name buttons), a large input field
 /// (Return translates, ⇧Return = newline, Esc closes), the result with Copy, and history.
 /// Tapping a language opens an in-panel searchable chooser (autofocused search, flag list).
+///
+/// Visuals come from `Theme` tokens and the reusable controls in Support/ (AppButtonStyle,
+/// ClearButton, FlagLabelButton, UpdateBannerButton, AccentPill, SectionActionHeader) so the
+/// whole UI shares one style system.
 struct PopupView: View {
     @EnvironmentObject private var vm: PopupViewModel
     @EnvironmentObject private var preferences: Preferences
@@ -24,7 +28,7 @@ struct PopupView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let version = updater.availableUpdate {
-                updateBanner(version)
+                UpdateBannerButton(version: version) { updater.installUpdate() }
             }
 
             languageBar
@@ -58,16 +62,16 @@ struct PopupView: View {
                 }
             }
         }
-        .padding(18)
-        .frame(width: 600, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(Theme.Metrics.cardContentPadding)
+        .frame(width: Theme.Metrics.cardWidth, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(.white.opacity(Theme.Opacity.cardBorder), lineWidth: Theme.Metrics.cardBorderWidth)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.30), radius: 26, x: 0, y: 12)
-        .padding(24)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .shadow(color: .black.opacity(Theme.Opacity.cardShadow), radius: Theme.Metrics.cardShadowRadius, x: 0, y: Theme.Metrics.cardShadowY)
+        .padding(Theme.Metrics.cardOuterPadding)
         .onAppear { focusInput() }
         .onReceive(NotificationCenter.default.publisher(for: .focusPopupInput)) { _ in
             if picking == nil { focusInput() }
@@ -84,9 +88,9 @@ struct PopupView: View {
                 vm.swapLanguages()
             } label: {
                 Image(systemName: "arrow.left.arrow.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.Fonts.icon)
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(.appIcon)
             .disabled(preferences.sourceCode == Language.auto.code)
             .help(preferences.sourceCode == Language.auto.code ? "Pick a source language to swap" : "Swap languages")
 
@@ -99,7 +103,7 @@ struct PopupView: View {
             } label: {
                 Image(systemName: "clock.arrow.circlepath")
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(.appIcon)
             .help("History")
             .disabled(history.entries.isEmpty)
 
@@ -109,7 +113,7 @@ struct PopupView: View {
             } label: {
                 Image(systemName: "gearshape")
             }
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(.appIcon)
             .help("Settings")
 
             Menu {
@@ -122,13 +126,13 @@ struct PopupView: View {
                 Image(systemName: "ellipsis").foregroundStyle(.secondary)
             }
             .menuStyle(.button)
-            .buttonStyle(IconButtonStyle())
+            .buttonStyle(.appIcon)
             .menuIndicator(.hidden)
             .overlay(alignment: .topTrailing) {
                 if updater.availableUpdate != nil {
                     Circle()
                         .fill(.red)
-                        .frame(width: 7, height: 7)
+                        .frame(width: Theme.Metrics.updateDot, height: Theme.Metrics.updateDot)
                         .overlay(Circle().strokeBorder(.background, lineWidth: 1))
                         .offset(x: -2, y: 3)
                 }
@@ -138,45 +142,20 @@ struct PopupView: View {
         .foregroundStyle(.secondary)
     }
 
-    private func updateBanner(_ version: String) -> some View {
-        Button {
-            updater.installUpdate()
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "arrow.down.circle.fill")
-                Text("Update available — v\(version)")
-                Spacer()
-                Text("Install").fontWeight(.semibold)
-            }
-            .font(.callout)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
-            .background(Color.accentColor.opacity(0.18), in: Capsule())
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .help("Download and install v\(version)")
-    }
-
     private func languageButton(_ field: PickerField) -> some View {
         let lang = Languages.language(for: code(for: field))
-        return Button {
+        return FlagLabelButton(
+            code: lang.code,
+            name: lang.name,
+            help: field == .source ? "Source language" : "Target language"
+        ) {
             if picking == field {
                 closePicker()
             } else {
                 picking = field
                 query = ""
             }
-        } label: {
-            HStack(spacing: 5) {
-                FlagImage(code: lang.code, width: 20, height: 14)
-                Text(lang.name).lineLimit(1)
-                Image(systemName: "chevron.down").font(.caption2).opacity(0.6)
-            }
         }
-        .buttonStyle(HoverButtonStyle())
-        .help(field == .source ? "Source language" : "Target language")
     }
 
     // MARK: - Searchable chooser (in-panel, no extra window)
@@ -187,11 +166,7 @@ struct PopupView: View {
                 Text(field == .source ? "Translate from" : "Translate to")
                     .font(.headline)
                 Spacer()
-                Button { closePicker() } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                }
-                .buttonStyle(.borderless)
-                .help("Close")
+                ClearButton(help: "Close", variant: .borderless) { closePicker() }
             }
 
             // Search box (icon + clear button). Autofocus is deferred one state cycle so it lands
@@ -213,14 +188,11 @@ struct PopupView: View {
                         return .handled
                     }
                 if !query.isEmpty {
-                    Button { query = "" } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
+                    ClearButton(variant: .borderless) { query = "" }
                 }
             }
-            .padding(8)
-            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .padding(Theme.Metrics.fieldPadding)
+            .background(.quaternary.opacity(Theme.Opacity.fieldFill), in: RoundedRectangle(cornerRadius: Theme.Radius.field, style: .continuous))
 
             ScrollView {
                 VStack(spacing: 2) {
@@ -238,13 +210,10 @@ struct PopupView: View {
                                     Image(systemName: "checkmark").foregroundStyle(.tint)
                                 }
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 7)
+                            .padding(.horizontal, Theme.Metrics.rowHPadding)
+                            .padding(.vertical, Theme.Metrics.rowVPadding)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                isSelected ? Color.accentColor.opacity(0.15) : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            )
+                            .accentPill(.selectedRow(active: isSelected))
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -257,7 +226,7 @@ struct PopupView: View {
                     }
                 }
             }
-            .frame(maxHeight: 260)
+            .frame(maxHeight: Theme.Metrics.scrollMaxHeight)
         }
     }
 
@@ -295,9 +264,9 @@ struct PopupView: View {
     private var inputField: some View {
         HStack(alignment: .top, spacing: 6) {
             // TextField (not TextEditor) so there's no scroll-view chrome / black scroller line.
-            TextField("Type or paste text — Return translates, ⇧Return = new line", text: $vm.inputText, axis: .vertical)
+            TextField("Type or paste text to translate…", text: $vm.inputText, axis: .vertical)
                 .textFieldStyle(.plain)
-                .font(.system(size: 18))
+                .font(Theme.Fonts.largeBody)
                 .lineLimit(1 ... 8)
                 .focused($inputFocused)
                 .onKeyPress(phases: .down) { press in
@@ -319,28 +288,23 @@ struct PopupView: View {
                 }
 
             if !vm.inputText.isEmpty {
-                Button {
+                ClearButton(help: "Clear", variant: .icon) {
                     vm.clearInput()
                     inputFocused = true
-                } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
-                .buttonStyle(IconButtonStyle())
-                .help("Clear")
             }
         }
     }
 
     private func resultView(_ result: TranslationOutcome) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Divider()
-            HStack {
+            SectionActionHeader {
                 if let detected = result.detectedSourceName {
                     Text("Detected: \(detected)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Spacer()
+            } trailing: {
                 Button {
                     vm.copyResult()
                 } label: {
@@ -348,13 +312,13 @@ struct PopupView: View {
                           systemImage: vm.justCopied ? "checkmark" : "doc.on.doc")
                         .foregroundStyle(vm.justCopied ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
                 }
-                .buttonStyle(HoverButtonStyle())
-                .animation(.easeOut(duration: 0.15), value: vm.justCopied)
+                .buttonStyle(.appHover)
+                .animation(Theme.Motion.copyState, value: vm.justCopied)
                 .keyboardShortcut("c", modifiers: .command)
                 .help("Copy translation (⌘C)")
             }
             Text(result.translation)
-                .font(.system(size: 18))
+                .font(Theme.Fonts.largeBody)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true) // show ALL lines (don't clip to one)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -363,12 +327,11 @@ struct PopupView: View {
 
     private var historyView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Divider()
-            HStack {
+            SectionActionHeader {
                 Text("History")
                     .font(.caption.bold())
                     .foregroundStyle(.secondary)
-                Spacer()
+            } trailing: {
                 Button("Clear") {
                     history.clear()
                     showingHistory = false
@@ -385,10 +348,10 @@ struct PopupView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 4) {
-                                    FlagImage(code: entry.sourceCode, width: 16, height: 12)
+                                    FlagImage(code: entry.sourceCode, width: Theme.FlagSize.compact.width, height: Theme.FlagSize.compact.height)
                                     Text(Languages.name(for: entry.sourceCode))
                                     Image(systemName: "arrow.right").font(.caption2)
-                                    FlagImage(code: entry.targetCode, width: 16, height: 12)
+                                    FlagImage(code: entry.targetCode, width: Theme.FlagSize.compact.width, height: Theme.FlagSize.compact.height)
                                     Text(Languages.name(for: entry.targetCode))
                                 }
                                 .font(.caption2)
@@ -402,14 +365,14 @@ struct PopupView: View {
                             .font(.callout)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
-                            .padding(.vertical, 6)
+                            .padding(.vertical, Theme.Metrics.historyRowVPadding)
                         }
                         .buttonStyle(.plain)
-                        Divider().opacity(0.35)
+                        Divider().opacity(Theme.Opacity.rowDivider)
                     }
                 }
             }
-            .frame(maxHeight: 260)
+            .frame(maxHeight: Theme.Metrics.scrollMaxHeight)
         }
     }
 
