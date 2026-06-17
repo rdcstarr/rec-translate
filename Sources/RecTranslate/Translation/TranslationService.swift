@@ -20,7 +20,16 @@ struct TranslationService: Sendable {
             throw TranslationError.tooLong(limit: kMaxTranslationCharacters)
         }
 
-        let result = try await provider.translate(text: trimmed, source: sourceCode, target: targetCode)
+        // Resolve "Detect language": prefer a confident on-device detection (more reliable than the
+        // upstream engine on short text); otherwise pass "auto" through and let the server detect.
+        var resolvedSource = sourceCode
+        var onDeviceDetectedName: String?
+        if sourceCode == Language.auto.code, let detected = LanguageDetector.detect(trimmed) {
+            resolvedSource = detected
+            onDeviceDetectedName = Languages.name(for: detected)
+        }
+
+        let result = try await provider.translate(text: trimmed, source: resolvedSource, target: targetCode)
 
         // Google lowercases single-word translations; mirror the source's leading capitalization
         // so "Hello" -> "Bună" (not "bună").
@@ -29,14 +38,24 @@ struct TranslationService: Sendable {
             translation = translation.uppercasingFirstLetter()
         }
 
-        let detectedSourceName: String? = (sourceCode == Language.auto.code)
-            ? result.detected.map { Languages.name(for: $0) }
-            : nil
+        // What to show as "Detected:" — on-device wins, else the server's src when we asked for auto.
+        let detectedSourceName: String?
+        if let onDeviceDetectedName {
+            detectedSourceName = onDeviceDetectedName
+        } else if sourceCode == Language.auto.code {
+            detectedSourceName = result.detected.map { Languages.name(for: $0) }
+        } else {
+            detectedSourceName = nil
+        }
+
+        let resolvedSourceCode = (resolvedSource != Language.auto.code)
+            ? resolvedSource
+            : (result.detected ?? sourceCode)
 
         return TranslationOutcome(
             original: trimmed,
             translation: translation,
-            resolvedSourceCode: result.detected ?? sourceCode,
+            resolvedSourceCode: resolvedSourceCode,
             targetCode: targetCode,
             detectedSourceName: detectedSourceName
         )

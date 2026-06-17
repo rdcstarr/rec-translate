@@ -101,11 +101,18 @@ struct PopupView: View {
             Spacer()
 
             Button {
-                showingHistory.toggle()
+                if picking != nil {
+                    // A language chooser is covering the content — close it and reveal history.
+                    picking = nil
+                    query = ""
+                    showingHistory = true
+                } else {
+                    showingHistory.toggle()
+                }
             } label: {
                 Image(systemName: "clock.arrow.circlepath")
             }
-            .buttonStyle(.appIcon)
+            .buttonStyle(.appIcon(active: showingHistory && picking == nil))
             .help("History")
             .disabled(history.entries.isEmpty)
 

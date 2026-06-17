@@ -48,4 +48,6 @@ enum Languages {
 
     static func name(for code: String) -> String { language(for: code).name }
     static func flag(for code: String) -> String { language(for: code).flag }
+
+    static func isSupported(_ code: String) -> Bool { targets.contains { $0.code == code } }
 }
