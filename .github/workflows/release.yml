@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 env:
-  SPARKLE_VERSION: "2.6.4"
+  SPARKLE_VERSION: "2.9.3"  # match the Sparkle framework version SPM resolves
 
 jobs:
   release:
