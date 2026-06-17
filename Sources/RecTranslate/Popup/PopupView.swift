@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// The ChatGPT "Chat Bar"-style popup: a language bar (flag + name buttons), a large input field
 /// (Return translates, ⇧Return = newline, Esc closes), the result with Copy, and history.
@@ -95,6 +96,28 @@ struct PopupView: View {
             .buttonStyle(.borderless)
             .help("History")
             .disabled(history.entries.isEmpty)
+
+            Button {
+                NotificationCenter.default.post(name: .openSettingsRequest, object: nil)
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            .help("Settings")
+
+            Menu {
+                Button("Check for Updates…") {
+                    Task { await AppEnvironment.shared.updater.checkForUpdates(userInitiated: true) }
+                }
+                Divider()
+                Button("Quit Rec Translate") { NSApp.terminate(nil) }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("More")
         }
         .foregroundStyle(.secondary)
     }
@@ -122,49 +145,82 @@ struct PopupView: View {
     // MARK: - Searchable chooser (in-panel, no extra window)
 
     private func languageChooser(_ field: PickerField) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextField("Search language…", text: $query)
-                .textFieldStyle(.plain)
-                .font(.system(size: 15))
-                .focused($searchFocused)
-                // Autofocus: the panel is key (canBecomeKey), and we defer the focus write by one
-                // state cycle (onAppear -> onChange) so it lands AFTER the field is committed into
-                // the focus tree. Uses only non-@Sendable closures (no self capture across actors).
-                .onAppear { focusRequested = true }
-                .onChange(of: focusRequested) { _, requested in
-                    if requested {
-                        searchFocused = true
-                        focusRequested = false
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(field == .source ? "Translate from" : "Translate to")
+                    .font(.headline)
+                Spacer()
+                Button { closePicker() } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Close")
+            }
+
+            // Search box (icon + clear button). Autofocus is deferred one state cycle so it lands
+            // after the field is committed into the focus tree (the panel is key via canBecomeKey).
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search language…", text: $query)
+                    .textFieldStyle(.plain)
+                    .focused($searchFocused)
+                    .onAppear { focusRequested = true }
+                    .onChange(of: focusRequested) { _, requested in
+                        if requested {
+                            searchFocused = true
+                            focusRequested = false
+                        }
                     }
+                    .onKeyPress(.escape) {
+                        closePicker()
+                        return .handled
+                    }
+                if !query.isEmpty {
+                    Button { query = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
                 }
-                .onKeyPress(.escape) {
-                    closePicker()
-                    return .handled
-                }
-            Divider()
+            }
+            .padding(8)
+            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
             ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(filtered(field)) { lang in
+                VStack(spacing: 2) {
+                    let matches = filtered(field)
+                    ForEach(matches) { lang in
+                        let isSelected = code(for: field) == lang.code
                         Button {
                             select(lang, for: field)
                         } label: {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 10) {
                                 FlagImage(code: lang.code)
                                 Text(lang.name)
                                 Spacer()
-                                if code(for: field) == lang.code {
-                                    Image(systemName: "checkmark").font(.caption).foregroundStyle(.tint)
+                                if isSelected {
+                                    Image(systemName: "checkmark").foregroundStyle(.tint)
                                 }
                             }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 7)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 6)
+                            .background(
+                                isSelected ? Color.accentColor.opacity(0.15) : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            )
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
+                    if matches.isEmpty {
+                        Text("No matches")
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 10)
+                    }
                 }
             }
-            .frame(maxHeight: 240)
+            .frame(maxHeight: 260)
         }
     }
 
