@@ -4,13 +4,12 @@ import Foundation
 /// (`RecAppTranslationProvider`); a future `OpenAIProvider` could drop in here without
 /// touching callers.
 protocol TranslationProvider: Sendable {
-    /// Translate `text` from `source` to `target` and return only the translated text.
-    /// `source`/`target` are concrete codes (never `auto`).
-    func translate(text: String, source: String, target: String) async throws -> String
+    /// Translate `text` from `source` to `target`. `source` may be `auto` (the server detects it).
+    func translate(text: String, source: String, target: String) async throws -> ProviderResult
 }
 
-/// Orchestrates a translation: validates input, resolves the `auto` source on-device,
-/// calls the provider, and packages the outcome (including the detected language name).
+/// Orchestrates a translation: validates input, calls the provider (passing `auto` straight
+/// through — the server resolves it), and packages the outcome with the detected language name.
 struct TranslationService: Sendable {
     let provider: TranslationProvider
 
@@ -21,26 +20,16 @@ struct TranslationService: Sendable {
             throw TranslationError.tooLong(limit: kMaxTranslationCharacters)
         }
 
-        var resolvedSource = sourceCode
-        var detectedSourceName: String?
-        if sourceCode == Language.auto.code {
-            guard let detected = LanguageDetector.detect(trimmed) else {
-                throw TranslationError.couldNotDetectLanguage
-            }
-            resolvedSource = detected
-            detectedSourceName = Languages.name(for: detected)
-        }
+        let result = try await provider.translate(text: trimmed, source: sourceCode, target: targetCode)
 
-        let translation = try await provider.translate(
-            text: trimmed,
-            source: resolvedSource,
-            target: targetCode
-        )
+        let detectedSourceName: String? = (sourceCode == Language.auto.code)
+            ? result.detected.map { Languages.name(for: $0) }
+            : nil
 
         return TranslationOutcome(
             original: trimmed,
-            translation: translation,
-            resolvedSourceCode: resolvedSource,
+            translation: result.translation,
+            resolvedSourceCode: result.detected ?? sourceCode,
             targetCode: targetCode,
             detectedSourceName: detectedSourceName
         )

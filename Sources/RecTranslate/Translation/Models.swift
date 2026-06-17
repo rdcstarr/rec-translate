@@ -28,24 +28,19 @@ struct TranslationOutcome: Hashable, Sendable {
     let detectedSourceName: String?
 }
 
-/// Successful JSON body returned by rec-app's `TranslateController`.
-struct RecAppTranslateResponse: Decodable, Sendable {
-    let source: String
-    let target: String
-    let text: String
+/// JSON body returned by proxy123.click `/translate/{source}/{target}`.
+struct ProxyTranslateResponse: Decodable, Sendable {
+    let success: Bool
+    let translation: String?
+    let detected: String?
+    let error: String?
+}
+
+/// What a `TranslationProvider` returns: the translated text plus an optional detected source code
+/// (set by the server when the request used `source = auto`).
+struct ProviderResult: Sendable {
     let translation: String
-}
-
-/// Error body rec-app returns for 4xx/5xx (`{"message": "..."}`).
-/// Internal (not `private`) so `RecAppTranslationProvider` in another file can use it.
-struct RecAppErrorResponse: Decodable {
-    let message: String?
-}
-
-extension RecAppErrorResponse {
-    static func message(from data: Data) -> String? {
-        (try? JSONDecoder().decode(RecAppErrorResponse.self, from: data))?.message
-    }
+    let detected: String?
 }
 
 /// Maximum characters accepted by the server (`GoogleTranslateService` throws at `>= 5000`).

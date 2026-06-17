@@ -36,23 +36,24 @@ if [ -f "$ROOT/Resources/AppIcon.icns" ]; then
   cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 fi
 
-# Embed Sparkle.framework. Sparkle is an XCFramework binary target: for `swift build` it lives
-# under .build/artifacts/.../Sparkle.xcframework/<slice>/Sparkle.framework (it is NOT copied into
-# the bin dir), so scan artifacts first, then fall back to the bin dir / a broad .build scan.
-SPARKLE_FW="$(find "$ROOT/.build/artifacts" -path '*Sparkle.xcframework*' -name 'Sparkle.framework' -type d 2>/dev/null | head -1)"
-if [ -z "$SPARKLE_FW" ]; then
-  SPARKLE_FW="$(find "$BIN_DIR" -maxdepth 1 -name 'Sparkle.framework' -type d 2>/dev/null | head -1)"
-fi
-if [ -z "$SPARKLE_FW" ]; then
-  SPARKLE_FW="$(find "$ROOT/.build" -name 'Sparkle.framework' -type d 2>/dev/null | head -1)"
-fi
-if [ -n "$SPARKLE_FW" ]; then
-  echo "==> Embedding Sparkle.framework from $SPARKLE_FW"
-  cp -R "$SPARKLE_FW" "$APP/Contents/Frameworks/"
-  # Let the executable find embedded frameworks at runtime.
-  install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/$APP_NAME" 2>/dev/null || true
-else
-  echo "WARNING: Sparkle.framework not found — in-app updates will be unavailable in this bundle."
+# Copy SwiftPM resource bundles (e.g. KeyboardShortcuts localizations) into Resources so that
+# `Bundle.module` resolves at runtime. Without this, opening Settings crashes when the shortcut
+# Recorder loads (Bundle.module fatalErrors). Auto-update needs no embedded framework anymore.
+copied_bundle=0
+while IFS= read -r b; do
+  [ -n "$b" ] || continue
+  cp -R "$b" "$APP/Contents/Resources/"
+  echo "==> Embedded resource bundle: $(basename "$b")"
+  copied_bundle=1
+done < <(find "$BIN_DIR" -maxdepth 1 -name '*.bundle' -type d 2>/dev/null)
+if [ "$copied_bundle" -eq 0 ]; then
+  KS_BUNDLE="$(find "$ROOT/.build" -name 'KeyboardShortcuts_*.bundle' -type d 2>/dev/null | head -1)"
+  if [ -n "$KS_BUNDLE" ]; then
+    cp -R "$KS_BUNDLE" "$APP/Contents/Resources/"
+    echo "==> Embedded resource bundle (fallback): $(basename "$KS_BUNDLE")"
+  else
+    echo "WARNING: no SwiftPM resource bundle found — Settings may crash on the shortcut recorder."
+  fi
 fi
 
 echo "==> Built unsigned bundle: $APP"

@@ -25,7 +25,7 @@ struct RecTranslateApp: App {
             Divider()
 
             Button("Check for Updates…") {
-                AppEnvironment.shared.updater.checkForUpdates()
+                Task { await AppEnvironment.shared.updater.checkForUpdates(userInitiated: true) }
             }
 
             Divider()

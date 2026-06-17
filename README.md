@@ -7,15 +7,17 @@ text, press **Return** to translate, the result shows below, **Esc** closes it.
 - Menu-bar only (no Dock icon), built with **SwiftUI + AppKit**, **Swift 6**, **SwiftPM only**.
 - Non-activating floating `NSPanel` that works over fullscreen apps and on any Space.
 - Global trigger: a **re-bindable shortcut** (default ⌥Space) **and** an optional **double-tap Shift**.
-- Translations go through the existing **rec-app** API (`/api/translate/{source}/{target}`),
-  which translates Google-via-proxy123 server-side. The app stores only your API key (in the **Keychain**).
-- Extras: **auto-detect source** (on-device `NLLanguageRecognizer`), **auto-copy**, **Copy (⌘C)**, **recent history**.
-- Ships as a **Developer ID-signed + notarized DMG** with **in-app updates via Sparkle**.
+- Translations go through the **`/translate` endpoint hosted on proxy123.click**, which translates
+  via its own rotating proxy pool (Google under the hood) and supports server-side language
+  auto-detect. The app stores only the proxy123 API token (in the **Keychain**).
+- **In-app auto-update** that watches this repo's **GitHub Releases** — no Sparkle, no signing
+  keys, no manual steps.
+- Extras: **auto-detect source**, **auto-copy**, **Copy (⌘C)**, **recent history**.
 
 Target OS: **macOS 26+**. Build toolchain: **Xcode 26 / Swift 6.2**.
 
-> ⚠️ This repo is developed on Linux but **cannot be compiled there** — building a macOS
-> AppKit/SwiftUI app needs macOS. Use the GitHub Actions macOS runner (recommended) or a Mac.
+> ⚠️ Developed on Linux but **cannot be compiled there** — building a macOS AppKit/SwiftUI app
+> needs macOS. The GitHub Actions macOS runner builds it; you just install and run.
 
 ## Install (free — one command)
 
@@ -25,134 +27,99 @@ On your Mac (macOS 26):
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/rdcstarr/rec-translate/main/install.sh)"
 ```
 
-This downloads the latest build, installs it to Applications, clears the Gatekeeper quarantine,
-and launches it (look for the speech-bubble icon in the menu bar). Then open **Settings…** and paste
-your rec-app translate API key (base URL defaults to `https://rec-app.recweb.app`).
+Downloads the latest build, installs it to Applications, clears the Gatekeeper quarantine, and
+launches it (speech-bubble icon in the menu bar). Then open **Settings…** and paste your proxy123
+**API token** (`API_BEARER_TOKEN`); the base URL defaults to `https://proxy123.click`.
 
-These free builds are **ad-hoc signed, not notarized** — that's why the installer clears the
-quarantine for you. For a notarized build with automatic Sparkle updates (and no quarantine step),
-add an Apple Developer ID and use the signed release path — see [Releasing](#releasing--auto-update-github-actions).
-
----
+Builds are **ad-hoc signed, not notarized** (free), which is why the installer clears the
+quarantine. Once installed, the app **updates itself** from GitHub Releases — you won't run this
+command again unless you want to.
 
 ## How translation works
 
-The app calls rec-app:
+The app calls proxy123.click directly:
 
 ```
-POST {baseURL}/api/translate/{source}/{target}
-Authorization: Bearer <API key with the "translate" ability>
+POST {baseURL}/translate/{source}/{target}
+Authorization: Bearer <proxy123 API_BEARER_TOKEN>
 Content-Type: application/json
 
 { "text": "Hello world" }
 ```
 
-Response: `{ "source", "target", "text", "translation" }`. Default `baseURL` is
-`https://rec-app.recweb.app` (editable in Settings). "Detect language" is resolved
-**on-device** before the request (the endpoint validates concrete language codes).
+Response: `{ "success", "source", "target", "text", "translation", "detected" }`. Default `baseURL`
+is `https://proxy123.click` (editable in Settings). The server (a Laravel `TranslateController` +
+`GoogleTranslateService` added to proxy123) translates through its own rotating proxy pool and
+resolves **`source = auto`** server-side (Google detects the language and returns it as `detected`).
 
-**Get an API key:** in rec-app, create an `ApiKey` with the `translate` ability and paste it
-into RecTranslate → Settings → Translation → *Translate API key*.
+**Token:** use your proxy123 `API_BEARER_TOKEN` (the same one that authorizes `/fetch`). Paste it
+into Settings — it's stored in your Keychain, never on disk.
 
----
+## Auto-update (how it works)
 
-## First-run setup (on your Mac)
+`GitHubUpdater` checks `api.github.com/repos/rdcstarr/rec-translate/releases/latest` a few seconds
+after launch and every 6 hours (and from **Settings → Updates → Check for Updates…**). When a newer
+release exists it offers to install; on accept it re-runs `install.sh` (download → install →
+relaunch). No Sparkle, no EdDSA keys, no Apple account needed.
 
-1. Open the app (it appears in the menu bar — the speech-bubble icon).
+## First-run setup
+
+1. Run the install command above; the app appears in the menu bar.
 2. Menu → **Settings…**
-   - **Translation:** confirm the base URL, paste your API key, pick default source/target.
+   - **Translation:** confirm the base URL, paste your proxy123 token, pick default source/target.
    - **Shortcuts:** record a global shortcut (default ⌥Space). Optionally enable **double-tap Shift**
-     — this asks for **Accessibility permission** (System Settings → Privacy & Security →
-     Accessibility), because a global key monitor requires it. The recorded combo needs no permission.
+     (asks for Accessibility permission — a global key monitor requires it; the recorded combo does not).
 3. Trigger the popup, type, press Return.
-
----
 
 ## Building locally on a Mac
 
-```bash
-# Debug run (no bundle):
-swift run
-
-# Build a universal release .app:
-./Scripts/bundle.sh 1.0.0 1     # -> build/RecTranslate.app  (unsigned)
+```sh
+swift run                          # debug run
+./Scripts/bundle.sh 0.1.0 1        # -> build/RecTranslate.app (unsigned)
 ```
 
 Open `Package.swift` in Xcode 26 to develop with the IDE.
 
----
+## Releases (GitHub Actions)
 
-## Releasing + auto-update (GitHub Actions)
+- `.github/workflows/ci.yml` — compile check on every push to `main`.
+- `.github/workflows/release-free.yml` — **default**: on a `v*` tag, build a universal app, ad-hoc
+  sign it, zip it, and publish `RecTranslate.zip` to a GitHub Release. No secrets. This is what the
+  installer and the in-app updater download.
+- `.github/workflows/test-build.yml` — manual ad-hoc build artifact for quick testing.
+- `.github/workflows/release.yml` — **optional, manual**: Developer ID sign + notarize + DMG, if you
+  ever add an Apple Developer account (secrets: `DEVELOPER_ID_P12_BASE64`, `DEVELOPER_ID_P12_PASSWORD`,
+  `KEYCHAIN_PASSWORD`, `SIGN_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`). Not required —
+  the free path + in-app updater work without it.
 
-Pushing a tag like `v1.0.0` runs `.github/workflows/release.yml` on a macOS runner, which:
-**builds → Developer ID signs (hardened runtime) → notarizes + staples → DMG → Sparkle appcast → GitHub Release**.
-`.github/workflows/ci.yml` builds on every push to `main` as a fast compile check.
-
-### Required GitHub repository secrets
-
-| Secret | What it is |
-| --- | --- |
-| `DEVELOPER_ID_P12_BASE64` | Your *Developer ID Application* cert+key exported as `.p12`, base64-encoded (`base64 -i cert.p12 \| pbcopy`). |
-| `DEVELOPER_ID_P12_PASSWORD` | Password you set on that `.p12`. |
-| `KEYCHAIN_PASSWORD` | Any throwaway password for the temporary CI keychain. |
-| `SIGN_IDENTITY` | e.g. `Developer ID Application: Your Name (TEAMID)`. |
-| `APPLE_ID` | Apple ID email used for notarization. |
-| `APPLE_TEAM_ID` | Your 10-char Apple Team ID. |
-| `APPLE_APP_PASSWORD` | App-specific password (appleid.apple.com → Sign-In & Security). |
-| `SPARKLE_PRIVATE_KEY` | EdDSA private key from Sparkle's `generate_keys` (the value, not the public key). |
-
-> Alternatively to the `APPLE_ID`/`APPLE_APP_PASSWORD` trio, use an App Store Connect API key
-> (`AC_API_KEY_PATH`, `AC_API_KEY_ID`, `AC_API_ISSUER`) — `Scripts/sign-notarize.sh` supports both.
-
-### One-time Sparkle setup
-
-1. On a Mac, get Sparkle's tools (`Sparkle-2.6.4.tar.xz` from the Sparkle releases) and run
-   `./bin/generate_keys`. It prints a **public** key and stores the **private** key.
-2. Put the **public** key into `Resources/Info.plist` → `SUPublicEDKey`.
-3. Export the **private** key (`./bin/generate_keys -x private.key`) and store its contents in the
-   `SPARKLE_PRIVATE_KEY` GitHub secret.
-4. Set `Resources/Info.plist` → `SUFeedURL` to where you publish `appcast.xml` (a GitHub Pages
-   URL, or the Release asset URL). The release workflow attaches `appcast.xml`; uncomment the
-   Pages step to publish it at a stable URL.
-
-### Installing
-
-The default (free) install is the **one-command installer** at the top of this README.
-
-For the **notarized** path (after you add an Apple Developer ID): download `RecTranslate.dmg` from
-the GitHub Release, open it, drag the app to Applications — it opens with no Gatekeeper warning and
-self-updates via Sparkle (Settings → Updates).
-
----
+Cut a release: `git tag v0.1.1 && git push origin v0.1.1`.
 
 ## Project layout
 
 ```
-Package.swift                     SwiftPM manifest (deps: KeyboardShortcuts, Sparkle)
+Package.swift                     SwiftPM manifest (dep: KeyboardShortcuts)
 Sources/RecTranslate/
   App/        RecTranslateApp, AppDelegate, AppEnvironment, HiddenWindowView
   Popup/      FloatingPanel, PanelController, PopupView, PopupViewModel
   Settings/   SettingsView
   Hotkey/     HotkeyManager (combo), DoubleShiftMonitor (double-tap Shift)
-  Translation/ TranslationService (+protocol), RecAppTranslationProvider, LanguageDetector, Models
+  Translation/ TranslationService (+protocol), ProxyTranslateProvider, Models
   Storage/    KeychainStore, Preferences, HistoryStore
-  Updates/    UpdaterController (Sparkle)
+  Updates/    GitHubUpdater (watches GitHub Releases)
   Support/    NSScreen+Mouse, Languages, Notifications
-Resources/    Info.plist, RecTranslate.entitlements, AppIcon.icns (optional)
-Scripts/      bundle.sh, sign-notarize.sh, make-appcast.sh
-.github/workflows/  ci.yml, release.yml
+Resources/    Info.plist, RecTranslate.entitlements
+Scripts/      bundle.sh (+ sign-notarize.sh for the optional notarized path)
+install.sh    one-command installer
+.github/workflows/  ci.yml, release-free.yml, test-build.yml, release.yml
 ```
-
----
 
 ## Verification checklist (on macOS 26)
 
-- [ ] CI build is green (compiles + signs + notarizes).
-- [ ] DMG installs with no Gatekeeper warning.
-- [ ] ⌥Space and double-tap Shift both open the popup on the monitor with the mouse, centered, field focused.
-- [ ] Type/paste → Return translates; Shift+Return inserts a newline; Esc closes.
-- [ ] Works over a fullscreen app and on a second monitor.
+- [ ] Installer runs; app appears in the menu bar.
+- [ ] ⌥Space and double-tap Shift open the popup on the monitor with the mouse, centered, field focused.
+- [ ] Type/paste → Return translates via proxy123; Shift+Return = newline; Esc closes.
 - [ ] Auto-detect labels the detected language; auto-copy + Copy (⌘C) work; history persists and reloads.
-- [ ] Settings: re-bind shortcut, toggle double-Shift (Accessibility prompt), change languages/base URL, save/remove API key.
-- [ ] Missing/invalid key → clear error; >5000 chars guarded; 502 shows a retryable message.
-- [ ] Sparkle "Check for Updates…" finds the appcast; a bumped release installs in-app.
+- [ ] Works over a fullscreen app and on a second monitor.
+- [ ] Settings: re-bind shortcut, toggle double-Shift (Accessibility prompt), change base URL, save/remove token.
+- [ ] Bad/missing token → clear error; >5000 chars guarded; upstream failure shows a retryable message.
+- [ ] **Updates:** Settings → Check for Updates… finds a newer release and updates in place.

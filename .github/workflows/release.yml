@@ -1,18 +1,13 @@
-name: Release
+name: Release (signed + notarized)
 
-# Triggered by pushing a tag like v1.2.3. Builds a universal app, Developer ID signs +
-# notarizes it, builds a DMG, generates a Sparkle appcast, and publishes a GitHub Release.
+# OPTIONAL path — manual only. Use this if you add an Apple Developer account: it Developer ID
+# signs + notarizes a DMG so the app installs with no Gatekeeper prompt. Not required — the free
+# release-free.yml (ad-hoc) + the in-app GitHubUpdater work without any Apple account.
 on:
-  # Signed + notarized path. MANUAL only — run this from the Actions tab once you've added the
-  # Developer ID / notarization / Sparkle secrets (see README). The default tag-triggered path is
-  # the free, ad-hoc release-free.yml.
   workflow_dispatch:
 
 permissions:
   contents: write
-
-env:
-  SPARKLE_VERSION: "2.9.3"  # match the Sparkle framework version SPM resolves
 
 jobs:
   release:
@@ -21,7 +16,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Select Xcode 26
-        # The macos-26 image's default Xcode is 26; there is no unversioned Xcode_26.app symlink.
         run: sudo xcode-select -s /Applications/Xcode.app
 
       - name: Derive version
@@ -62,38 +56,8 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: ./Scripts/sign-notarize.sh
 
-      - name: Fetch Sparkle tools
-        run: |
-          set -euo pipefail
-          curl -fsSL -o sparkle.tar.xz \
-            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
-          mkdir -p sparkle && tar -xf sparkle.tar.xz -C sparkle
-          echo "SPARKLE_BIN=$PWD/sparkle/bin" >> "$GITHUB_ENV"
-
-      - name: Generate appcast
-        env:
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-          DOWNLOAD_URL_PREFIX: "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
-        run: |
-          set -euo pipefail
-          mkdir -p build/updates
-          cp build/RecTranslate.dmg build/updates/
-          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_ed_key"
-          SPARKLE_PRIVATE_KEY_FILE="$RUNNER_TEMP/sparkle_ed_key" ./Scripts/make-appcast.sh
-          rm -f "$RUNNER_TEMP/sparkle_ed_key"
-
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            build/RecTranslate.dmg
-            build/appcast.xml
+          files: build/RecTranslate.dmg
           generate_release_notes: true
-
-      # Optional: also publish appcast.xml to GitHub Pages and point Info.plist's SUFeedURL at it.
-      # - name: Deploy appcast to Pages
-      #   uses: peaceiris/actions-gh-pages@v4
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     publish_dir: ./build
-      #     keep_files: true

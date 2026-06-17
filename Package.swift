@@ -17,15 +17,14 @@ let package = Package(
         // Global, re-bindable hotkey via Carbon RegisterEventHotKey — no Accessibility
         // permission required, ships a SwiftUI Recorder, persists to UserDefaults.
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.2.0"),
-        // In-app auto-update (appcast + EdDSA-signed updates).
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
+        // Auto-update is handled in-app by GitHubUpdater (watches GitHub Releases), so there is
+        // no Sparkle / signing-key dependency.
     ],
     targets: [
         .executableTarget(
             name: "RecTranslate",
             dependencies: [
                 "KeyboardShortcuts",
-                .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources/RecTranslate"
         )

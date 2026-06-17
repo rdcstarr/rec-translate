@@ -13,7 +13,8 @@ final class Preferences: ObservableObject {
     private enum Key {
         static let source = "pref.sourceCode"
         static let target = "pref.targetCode"
-        static let baseURL = "pref.baseURL"
+        // v2 key so the new proxy123 default applies even for installs that saved the old default.
+        static let baseURL = "pref.apiBaseURL.v2"
         static let autoCopy = "pref.autoCopy"
         static let doubleShift = "pref.doubleShiftEnabled"
         static let autoUpdates = "pref.autoCheckUpdates"
@@ -31,7 +32,7 @@ final class Preferences: ObservableObject {
     private init() {
         sourceCode = defaults.string(forKey: Key.source) ?? Language.auto.code
         targetCode = defaults.string(forKey: Key.target) ?? "ro"
-        baseURLString = defaults.string(forKey: Key.baseURL) ?? "https://rec-app.recweb.app"
+        baseURLString = defaults.string(forKey: Key.baseURL) ?? "https://proxy123.click"
         autoCopy = (defaults.object(forKey: Key.autoCopy) as? Bool) ?? true
         doubleShiftEnabled = (defaults.object(forKey: Key.doubleShift) as? Bool) ?? true
         autoCheckUpdates = (defaults.object(forKey: Key.autoUpdates) as? Bool) ?? true

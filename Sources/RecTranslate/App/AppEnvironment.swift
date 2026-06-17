@@ -11,14 +11,13 @@ final class AppEnvironment: ObservableObject {
     let panelController: PanelController
     let hotkeyManager = HotkeyManager()
     let doubleShiftMonitor = DoubleShiftMonitor()
-    let updater: UpdaterController
+    let updater = GitHubUpdater()
 
     private var cancellables = Set<AnyCancellable>()
 
     private init() {
         viewModel = PopupViewModel()
         panelController = PanelController(viewModel: viewModel)
-        updater = UpdaterController(automaticallyChecks: Preferences.shared.autoCheckUpdates)
     }
 
     /// Called once from `applicationDidFinishLaunching`.
@@ -27,6 +26,7 @@ final class AppEnvironment: ObservableObject {
             self?.panelController.toggle()
         }
         applyDoubleShiftSetting()
+        updater.startAutomaticChecks(enabled: Preferences.shared.autoCheckUpdates)
         observePreferences()
     }
 
@@ -52,7 +52,7 @@ final class AppEnvironment: ObservableObject {
         Preferences.shared.$autoCheckUpdates
             .dropFirst()
             .receive(on: RunLoop.main)
-            .sink { [weak self] enabled in self?.updater.setAutomaticChecks(enabled) }
+            .sink { [weak self] enabled in self?.updater.startAutomaticChecks(enabled: enabled) }
             .store(in: &cancellables)
     }
 }

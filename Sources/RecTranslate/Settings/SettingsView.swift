@@ -36,13 +36,13 @@ struct SettingsView: View {
             }
 
             Section("Service") {
-                TextField("API base URL", text: $preferences.baseURLString, prompt: Text("https://rec-app.recweb.app"))
+                TextField("API base URL", text: $preferences.baseURLString, prompt: Text("https://proxy123.click"))
                     .textContentType(.URL)
                     .autocorrectionDisabled()
 
-                SecureField("Translate API key", text: $apiKeyInput, prompt: Text(apiKeyStored ? "•••••••• (stored)" : "Paste your key"))
+                SecureField("proxy123 API token", text: $apiKeyInput, prompt: Text(apiKeyStored ? "•••••••• (stored)" : "Paste your token"))
                 HStack {
-                    Button("Save Key") { saveKey() }
+                    Button("Save Token") { saveKey() }
                         .disabled(apiKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
                     if apiKeyStored {
                         Button("Remove", role: .destructive) { removeKey() }
@@ -50,7 +50,7 @@ struct SettingsView: View {
                     Spacer()
                     Text(apiKeyStatus).font(.caption).foregroundStyle(.secondary)
                 }
-                Text("Create a key with the **translate** ability in rec-app, then paste it here. It is stored in your Keychain.")
+                Text("Use your proxy123 **API_BEARER_TOKEN**. It is stored in your Keychain.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -119,7 +119,12 @@ struct SettingsView: View {
         Form {
             Section("Updates") {
                 Toggle("Automatically check for updates", isOn: $preferences.autoCheckUpdates)
-                Button("Check for Updates…") { AppEnvironment.shared.updater.checkForUpdates() }
+                Button("Check for Updates…") {
+                    Task { await AppEnvironment.shared.updater.checkForUpdates(userInitiated: true) }
+                }
+                Text("Checks this project's GitHub Releases and updates in place — no manual steps.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 LabeledContent("Version", value: appVersion)
             }
         }

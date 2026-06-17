@@ -32,18 +32,6 @@
 	<string>NSApplication</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-
-	<!-- ===== Sparkle auto-update ===== -->
-	<!-- Served from the latest GitHub Release's appcast.xml asset (release.yml uploads it).
-	     Adjust the owner/repo if you fork it elsewhere. -->
-	<key>SUFeedURL</key>
-	<string>https://github.com/rdcstarr/rec-translate/releases/latest/download/appcast.xml</string>
-	<!-- TODO(user): paste the PUBLIC EdDSA key printed by Sparkle's `generate_keys`. -->
-	<key>SUPublicEDKey</key>
-	<string>REPLACE_WITH_SPARKLE_PUBLIC_ED_KEY</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUScheduledCheckInterval</key>
-	<integer>86400</integer>
+	<!-- Auto-update is handled in-app by GitHubUpdater (watches GitHub Releases) — no Sparkle keys. -->
 </dict>
 </plist>

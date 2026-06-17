@@ -38,7 +38,7 @@ final class PopupViewModel: ObservableObject {
         }
 
         let service = TranslationService(
-            provider: RecAppTranslationProvider(baseURL: baseURL, apiKey: apiKey)
+            provider: ProxyTranslateProvider(baseURL: baseURL, token: apiKey)
         )
         let source = preferences.sourceCode
         let target = preferences.targetCode
