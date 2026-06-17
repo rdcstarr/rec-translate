@@ -54,7 +54,8 @@ enum KeychainStore {
     }
 
     /// Read the string value for `account`, or `nil` if absent.
-    static func get(account: String) -> String? {
+    /// (Named `read`, not `get`: a computed-property body starting with `get(` is parsed as an accessor.)
+    static func read(account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -86,7 +87,7 @@ enum KeychainStore {
 
     static let apiKeyAccount = "translate-api-key"
 
-    static var apiKey: String? { get(account: apiKeyAccount) }
+    static var apiKey: String? { read(account: apiKeyAccount) }
 
     static func setAPIKey(_ value: String) throws {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
