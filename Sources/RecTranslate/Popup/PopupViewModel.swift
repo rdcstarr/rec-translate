@@ -45,8 +45,11 @@ final class PopupViewModel: ObservableObject {
         guard preferences.autoTranslate else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
-        // Stay silent until a token is set, so auto-translate doesn't spam "No API key" while typing.
-        guard let key = TokenStore.apiKey, !key.isEmpty else { return }
+        // Stay silent until the active engine's key is set, so auto-translate doesn't spam errors.
+        let hasKey = preferences.engine == .openai
+            ? (TokenStore.openAIKey?.isEmpty == false)
+            : (TokenStore.apiKey?.isEmpty == false)
+        guard hasKey else { return }
         if let current = result, current.original == trimmed { return } // already translated
         requestTranslate()
     }
@@ -76,18 +79,29 @@ final class PopupViewModel: ObservableObject {
         errorMessage = nil
 
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        guard let baseURL = preferences.baseURL else {
-            errorMessage = TranslationError.invalidBaseURL.errorDescription
-            return
-        }
-        guard let apiKey = TokenStore.apiKey, !apiKey.isEmpty else {
-            errorMessage = TranslationError.missingAPIKey.errorDescription
-            return
+
+        let provider: TranslationProvider
+        switch preferences.engine {
+        case .openai:
+            guard let openAIKey = TokenStore.openAIKey, !openAIKey.isEmpty else {
+                errorMessage = TranslationError.missingOpenAIKey.errorDescription
+                return
+            }
+            let model = preferences.openAIModel.trimmingCharacters(in: .whitespaces)
+            provider = OpenAIProvider(apiKey: openAIKey, model: model.isEmpty ? Preferences.defaultOpenAIModel : model)
+        case .google:
+            guard let baseURL = preferences.baseURL else {
+                errorMessage = TranslationError.invalidBaseURL.errorDescription
+                return
+            }
+            guard let apiKey = TokenStore.apiKey, !apiKey.isEmpty else {
+                errorMessage = TranslationError.missingAPIKey.errorDescription
+                return
+            }
+            provider = ProxyTranslateProvider(baseURL: baseURL, token: apiKey)
         }
 
-        let service = TranslationService(
-            provider: ProxyTranslateProvider(baseURL: baseURL, token: apiKey)
-        )
+        let service = TranslationService(provider: provider)
         let source = preferences.sourceCode
         let target = preferences.targetCode
 

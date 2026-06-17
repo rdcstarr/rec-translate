@@ -8,6 +8,9 @@ struct SettingsView: View {
     @State private var apiKeyInput = ""
     @State private var apiKeyStored = false
     @State private var apiKeyStatus = ""
+    @State private var openAIKeyInput = ""
+    @State private var openAIKeyStored = false
+    @State private var openAIKeyStatus = ""
     @State private var permissionRefresh = false // toggled to re-read Accessibility status
 
     var body: some View {
@@ -20,7 +23,10 @@ struct SettingsView: View {
                 .tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
         }
         .frame(width: Theme.Metrics.settingsWidth)
-        .onAppear { apiKeyStored = (TokenStore.apiKey?.isEmpty == false) }
+        .onAppear {
+            apiKeyStored = (TokenStore.apiKey?.isEmpty == false)
+            openAIKeyStored = (TokenStore.openAIKey?.isEmpty == false)
+        }
     }
 
     // MARK: - Translation
@@ -36,24 +42,55 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Service") {
-                TextField("API base URL", text: $preferences.baseURLString, prompt: Text("https://proxy123.click"))
-                    .textContentType(.URL)
-                    .autocorrectionDisabled()
-
-                SecureField("proxy123 API token", text: $apiKeyInput, prompt: Text(apiKeyStored ? "•••••••• (stored)" : "Paste your token"))
-                HStack {
-                    Button("Save Token") { saveKey() }
-                        .disabled(apiKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                    if apiKeyStored {
-                        Button("Remove", role: .destructive) { removeKey() }
-                    }
-                    Spacer()
-                    Text(apiKeyStatus).font(.caption).foregroundStyle(.secondary)
+            Section("Engine") {
+                Picker("Translate with", selection: $preferences.engine) {
+                    ForEach(TranslationEngine.allCases) { Text($0.displayName).tag($0) }
                 }
-                Text("Use your proxy123 **API_BEARER_TOKEN**. It is stored locally in a protected file (only your user can read it).")
+                Text(preferences.engine == .openai
+                    ? "OpenAI (your key) gives higher-quality, context-aware translations — it costs per use and is a bit slower."
+                    : "Google is fast and free (via your proxy123 server).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            if preferences.engine == .google {
+                Section("Google service") {
+                    TextField("API base URL", text: $preferences.baseURLString, prompt: Text("https://proxy123.click"))
+                        .textContentType(.URL)
+                        .autocorrectionDisabled()
+
+                    SecureField("proxy123 API token", text: $apiKeyInput, prompt: Text(apiKeyStored ? "•••••••• (stored)" : "Paste your token"))
+                    HStack {
+                        Button("Save Token") { saveKey() }
+                            .disabled(apiKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                        if apiKeyStored {
+                            Button("Remove", role: .destructive) { removeKey() }
+                        }
+                        Spacer()
+                        Text(apiKeyStatus).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text("Use your proxy123 **API_BEARER_TOKEN**. It is stored locally in a protected file (only your user can read it).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Section("OpenAI") {
+                    SecureField("OpenAI API key", text: $openAIKeyInput, prompt: Text(openAIKeyStored ? "•••••••• (stored)" : "Paste your sk-… key"))
+                    HStack {
+                        Button("Save Key") { saveOpenAIKey() }
+                            .disabled(openAIKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                        if openAIKeyStored {
+                            Button("Remove", role: .destructive) { removeOpenAIKey() }
+                        }
+                        Spacer()
+                        Text(openAIKeyStatus).font(.caption).foregroundStyle(.secondary)
+                    }
+                    TextField("Model", text: $preferences.openAIModel, prompt: Text(Preferences.defaultOpenAIModel))
+                        .autocorrectionDisabled()
+                    Text("Create a key at platform.openai.com. Stored locally in a protected file. `gpt-4o-mini` is cheap and great for translation; use a stronger model for nuanced text.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Behavior") {
@@ -171,6 +208,28 @@ struct SettingsView: View {
             apiKeyStatus = "Removed."
         } catch {
             apiKeyStatus = error.localizedDescription
+        }
+    }
+
+    private func saveOpenAIKey() {
+        do {
+            try TokenStore.setOpenAIKey(openAIKeyInput)
+            openAIKeyStored = true
+            openAIKeyInput = ""
+            openAIKeyStatus = "Saved."
+        } catch {
+            openAIKeyStatus = error.localizedDescription
+        }
+    }
+
+    private func removeOpenAIKey() {
+        do {
+            try TokenStore.setOpenAIKey("")
+            openAIKeyStored = false
+            openAIKeyInput = ""
+            openAIKeyStatus = "Removed."
+        } catch {
+            openAIKeyStatus = error.localizedDescription
         }
     }
 }

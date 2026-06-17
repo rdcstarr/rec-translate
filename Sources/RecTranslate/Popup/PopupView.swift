@@ -78,6 +78,7 @@ struct PopupView: View {
         }
         .onChange(of: preferences.sourceCode) { _, _ in vm.retranslateForLanguageChange() }
         .onChange(of: preferences.targetCode) { _, _ in vm.retranslateForLanguageChange() }
+        .onChange(of: preferences.engine) { _, _ in vm.retranslateForLanguageChange() }
     }
 
     // MARK: - Language bar

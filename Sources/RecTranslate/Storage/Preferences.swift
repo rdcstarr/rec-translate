@@ -20,7 +20,11 @@ final class Preferences: ObservableObject {
         static let doubleShift = "pref.doubleShiftEnabled"
         static let autoUpdates = "pref.autoCheckUpdates"
         static let historyLimit = "pref.historyLimit"
+        static let engine = "pref.engine"
+        static let openAIModel = "pref.openAIModel"
     }
+
+    static let defaultOpenAIModel = "gpt-4o-mini"
 
     @Published var sourceCode: String { didSet { defaults.set(sourceCode, forKey: Key.source) } }
     @Published var targetCode: String { didSet { defaults.set(targetCode, forKey: Key.target) } }
@@ -30,6 +34,8 @@ final class Preferences: ObservableObject {
     @Published var doubleShiftEnabled: Bool { didSet { defaults.set(doubleShiftEnabled, forKey: Key.doubleShift) } }
     @Published var autoCheckUpdates: Bool { didSet { defaults.set(autoCheckUpdates, forKey: Key.autoUpdates) } }
     @Published var historyLimit: Int { didSet { defaults.set(historyLimit, forKey: Key.historyLimit) } }
+    @Published var engine: TranslationEngine { didSet { defaults.set(engine.rawValue, forKey: Key.engine) } }
+    @Published var openAIModel: String { didSet { defaults.set(openAIModel, forKey: Key.openAIModel) } }
 
     private init() {
         sourceCode = defaults.string(forKey: Key.source) ?? Language.auto.code
@@ -40,6 +46,9 @@ final class Preferences: ObservableObject {
         doubleShiftEnabled = (defaults.object(forKey: Key.doubleShift) as? Bool) ?? true
         autoCheckUpdates = (defaults.object(forKey: Key.autoUpdates) as? Bool) ?? true
         historyLimit = (defaults.object(forKey: Key.historyLimit) as? Int) ?? 20
+        engine = TranslationEngine(rawValue: defaults.string(forKey: Key.engine) ?? "") ?? .google
+        let savedModel = defaults.string(forKey: Key.openAIModel)?.trimmingCharacters(in: .whitespaces)
+        openAIModel = (savedModel?.isEmpty == false ? savedModel! : Preferences.defaultOpenAIModel)
     }
 
     /// Parsed, validated base URL (nil when the string is malformed).

@@ -18,6 +18,21 @@ struct Language: Identifiable, Hashable, Sendable {
     var isAuto: Bool { code == Language.auto.code }
 }
 
+/// Which backend performs the translation.
+enum TranslationEngine: String, CaseIterable, Identifiable, Sendable {
+    case google
+    case openai
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .google: return "Google · fast & free"
+        case .openai: return "OpenAI · higher quality"
+        }
+    }
+}
+
 /// The result of a successful translation, ready for display and history.
 struct TranslationOutcome: Hashable, Sendable {
     let original: String
@@ -59,6 +74,7 @@ enum TranslationError: LocalizedError, Sendable {
     case tooLong(limit: Int)
     case couldNotDetectLanguage
     case missingAPIKey
+    case missingOpenAIKey
     case invalidBaseURL
     case unauthorized
     case forbidden
@@ -78,6 +94,8 @@ enum TranslationError: LocalizedError, Sendable {
             return "Couldn't detect the language. Pick a source language in Settings."
         case .missingAPIKey:
             return "No API key set. Add your translate API key in Settings."
+        case .missingOpenAIKey:
+            return "No OpenAI API key set. Add it in Settings (or switch to Google)."
         case .invalidBaseURL:
             return "The API base URL in Settings is not valid."
         case .unauthorized:
