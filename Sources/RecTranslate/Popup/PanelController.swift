@@ -67,6 +67,7 @@ final class PanelController {
             .environmentObject(viewModel)
             .environmentObject(Preferences.shared)
             .environmentObject(HistoryStore.shared)
+            .environmentObject(AppEnvironment.shared.updater)
 
         let hostingController = NSHostingController(rootView: root)
         hostingController.sizingOptions = [.preferredContentSize]

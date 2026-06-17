@@ -12,6 +12,9 @@ final class GitHubUpdater: ObservableObject {
     private let checkInterval: TimeInterval = 6 * 60 * 60 // 6 hours
 
     @Published private(set) var isChecking = false
+    /// Set to the latest version string when a newer release is available (drives the in-popup
+    /// Install banner); nil when up to date.
+    @Published private(set) var availableUpdate: String?
     private var timer: Timer?
 
     private struct Release: Decodable {
@@ -53,9 +56,15 @@ final class GitHubUpdater: ObservableObject {
             let latest = try await fetchLatestRelease()
             let latestVersion = latest.tagName.hasPrefix("v") ? String(latest.tagName.dropFirst()) : latest.tagName
             if isVersion(latestVersion, newerThan: currentVersion) {
-                presentUpdatePrompt(latestVersion: latestVersion, notes: latest.body)
-            } else if userInitiated {
-                presentInfo(title: "You're up to date", message: "Rec Translate v\(currentVersion) is the latest version.")
+                availableUpdate = latestVersion // surfaces the in-popup Install banner
+                if userInitiated {
+                    presentUpdatePrompt(latestVersion: latestVersion, notes: latest.body)
+                }
+            } else {
+                availableUpdate = nil
+                if userInitiated {
+                    presentInfo(title: "You're up to date", message: "Rec Translate v\(currentVersion) is the latest version.")
+                }
             }
         } catch {
             if userInitiated {
@@ -133,7 +142,7 @@ final class GitHubUpdater: ObservableObject {
 
     /// Run the installer detached (it downloads the latest release, installs to /Applications,
     /// clears quarantine, and reopens the app), then quit so it can replace this bundle.
-    private func installUpdate() {
+    func installUpdate() {
         // Fully detach the installer (nohup + background + disown) so it survives this app's
         // termination, and run curl INSIDE the detached process — not in the parent shell's
         // command substitution — so a quit mid-download can't kill it.

@@ -8,6 +8,7 @@ struct PopupView: View {
     @EnvironmentObject private var vm: PopupViewModel
     @EnvironmentObject private var preferences: Preferences
     @EnvironmentObject private var history: HistoryStore
+    @EnvironmentObject private var updater: GitHubUpdater
 
     @FocusState private var inputFocused: Bool
     @FocusState private var searchFocused: Bool
@@ -22,6 +23,10 @@ struct PopupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let version = updater.availableUpdate {
+                updateBanner(version)
+            }
+
             languageBar
 
             if let picking {
@@ -120,6 +125,27 @@ struct PopupView: View {
             .help("More")
         }
         .foregroundStyle(.secondary)
+    }
+
+    private func updateBanner(_ version: String) -> some View {
+        Button {
+            updater.installUpdate()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.down.circle.fill")
+                Text("Update available — v\(version)")
+                Spacer()
+                Text("Install").fontWeight(.semibold)
+            }
+            .font(.callout)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(Color.accentColor.opacity(0.18), in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help("Download and install v\(version)")
     }
 
     private func languageButton(_ field: PickerField) -> some View {

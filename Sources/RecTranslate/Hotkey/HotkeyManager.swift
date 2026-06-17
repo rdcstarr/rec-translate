@@ -2,10 +2,10 @@ import Foundation
 import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {
-    /// The re-bindable global shortcut that opens the popup. Defaults to ⌥Space (like ChatGPT).
-    /// The user can change it from the Settings recorder; KeyboardShortcuts persists it to
-    /// UserDefaults automatically.
-    static let toggleTranslator = Self("toggleTranslator", default: .init(.space, modifiers: .option))
+    /// The re-bindable global shortcut that opens the popup. No default — the user records their own
+    /// in Settings (double-tap Shift is the default trigger instead). Persisted to UserDefaults
+    /// automatically by KeyboardShortcuts.
+    static let toggleTranslator = Self("toggleTranslator")
 }
 
 /// Registers the global combo via KeyboardShortcuts (Carbon `RegisterEventHotKey` under the
