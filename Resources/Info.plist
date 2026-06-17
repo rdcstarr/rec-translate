@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>RecTranslate</string>
+	<key>CFBundleDisplayName</key>
+	<string>RecTranslate</string>
+	<key>CFBundleExecutable</key>
+	<string>RecTranslate</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.recweb.rectranslate</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<!-- CFBundleShortVersionString / CFBundleVersion are overwritten by bundle.sh at build time. -->
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+
+	<!-- Menu-bar agent: no Dock icon, no app-switcher entry. -->
+	<key>LSUIElement</key>
+	<true/>
+
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 recweb. All rights reserved.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+
+	<!-- ===== Sparkle auto-update ===== -->
+	<!-- Served from the latest GitHub Release's appcast.xml asset (release.yml uploads it).
+	     Adjust the owner/repo if you fork it elsewhere. -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/rdcstarr/rec-translate/releases/latest/download/appcast.xml</string>
+	<!-- TODO(user): paste the PUBLIC EdDSA key printed by Sparkle's `generate_keys`. -->
+	<key>SUPublicEDKey</key>
+	<string>REPLACE_WITH_SPARKLE_PUBLIC_ED_KEY</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+</dict>
+</plist>

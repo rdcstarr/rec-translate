@@ -1,0 +1,22 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Build output
+build/
+*.app
+*.dmg
+*.zip
+
+# macOS
+.DS_Store
+
+# Secrets / local config — never commit these
+*.p12
+*.cer
+*.provisionprofile
+sparkle_private_key*
+AuthKey_*.p8
+.env
+secrets/

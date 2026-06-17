@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  RecTranslate is NOT sandboxed, so a global hotkey + Keychain access work with no
+  special entitlement and this file is intentionally empty.
+
+  It is kept (and signed with `--entitlements`) only as a stable anchor: if you ever
+  enable the App Sandbox, add `com.apple.security.app-sandbox` and re-verify the
+  hotkey + Keychain behaviour. Hardened runtime (codesign --options runtime, required
+  for notarization) does not itself need any entitlement here.
+-->
+<plist version="1.0">
+<dict/>
+</plist>

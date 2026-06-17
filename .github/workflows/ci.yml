@@ -1,0 +1,27 @@
+name: CI
+
+# Fast compile gate. Building a macOS/AppKit app requires the macOS SDK + Xcode 26 toolchain,
+# so this runs on a macOS runner (the project cannot be compiled on Linux).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        # The macos-26 image's default Xcode is 26; there is no unversioned Xcode_26.app symlink.
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Versions
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Build (release)
+        run: swift build -c release --arch arm64 --arch x86_64

@@ -1,0 +1,98 @@
+name: Release
+
+# Triggered by pushing a tag like v1.2.3. Builds a universal app, Developer ID signs +
+# notarizes it, builds a DMG, generates a Sparkle appcast, and publishes a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SPARKLE_VERSION: "2.6.4"
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        # The macos-26 image's default Xcode is 26; there is no unversioned Xcode_26.app symlink.
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Derive version
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "version=${TAG:-0.0.0}" >> "$GITHUB_OUTPUT"
+          echo "build=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Import Developer ID certificate
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          echo "$DEVELOPER_ID_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
+            -P "$DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Bundle .app
+        run: ./Scripts/bundle.sh "${{ steps.ver.outputs.version }}" "${{ steps.ver.outputs.build }}"
+
+      - name: Sign, notarize, DMG
+        env:
+          SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: ./Scripts/sign-notarize.sh
+
+      - name: Fetch Sparkle tools
+        run: |
+          set -euo pipefail
+          curl -fsSL -o sparkle.tar.xz \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir -p sparkle && tar -xf sparkle.tar.xz -C sparkle
+          echo "SPARKLE_BIN=$PWD/sparkle/bin" >> "$GITHUB_ENV"
+
+      - name: Generate appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          DOWNLOAD_URL_PREFIX: "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
+        run: |
+          set -euo pipefail
+          mkdir -p build/updates
+          cp build/RecTranslate.dmg build/updates/
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_ed_key"
+          SPARKLE_PRIVATE_KEY_FILE="$RUNNER_TEMP/sparkle_ed_key" ./Scripts/make-appcast.sh
+          rm -f "$RUNNER_TEMP/sparkle_ed_key"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/RecTranslate.dmg
+            build/appcast.xml
+          generate_release_notes: true
+
+      # Optional: also publish appcast.xml to GitHub Pages and point Info.plist's SUFeedURL at it.
+      # - name: Deploy appcast to Pages
+      #   uses: peaceiris/actions-gh-pages@v4
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     publish_dir: ./build
+      #     keep_files: true
