@@ -31,7 +31,7 @@ final class PopupViewModel: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
         // Stay silent until a token is set, so auto-translate doesn't spam "No API key" while typing.
-        guard let key = KeychainStore.apiKey, !key.isEmpty else { return }
+        guard let key = TokenStore.apiKey, !key.isEmpty else { return }
         if let current = result, current.original == trimmed { return } // already translated
         requestTranslate()
     }
@@ -57,7 +57,7 @@ final class PopupViewModel: ObservableObject {
             errorMessage = TranslationError.invalidBaseURL.errorDescription
             return
         }
-        guard let apiKey = KeychainStore.apiKey, !apiKey.isEmpty else {
+        guard let apiKey = TokenStore.apiKey, !apiKey.isEmpty else {
             errorMessage = TranslationError.missingAPIKey.errorDescription
             return
         }

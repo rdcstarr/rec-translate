@@ -20,7 +20,7 @@ struct SettingsView: View {
                 .tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
         }
         .frame(width: 480)
-        .onAppear { apiKeyStored = (KeychainStore.apiKey?.isEmpty == false) }
+        .onAppear { apiKeyStored = (TokenStore.apiKey?.isEmpty == false) }
     }
 
     // MARK: - Translation
@@ -51,7 +51,7 @@ struct SettingsView: View {
                     Spacer()
                     Text(apiKeyStatus).font(.caption).foregroundStyle(.secondary)
                 }
-                Text("Use your proxy123 **API_BEARER_TOKEN**. It is stored in your Keychain.")
+                Text("Use your proxy123 **API_BEARER_TOKEN**. It is stored locally in a protected file (only your user can read it).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -154,7 +154,7 @@ struct SettingsView: View {
 
     private func saveKey() {
         do {
-            try KeychainStore.setAPIKey(apiKeyInput)
+            try TokenStore.setAPIKey(apiKeyInput)
             apiKeyStored = true
             apiKeyInput = ""
             apiKeyStatus = "Saved."
@@ -165,7 +165,7 @@ struct SettingsView: View {
 
     private func removeKey() {
         do {
-            try KeychainStore.setAPIKey("")
+            try TokenStore.setAPIKey("")
             apiKeyStored = false
             apiKeyInput = ""
             apiKeyStatus = "Removed."

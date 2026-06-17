@@ -9,6 +9,7 @@ struct PopupView: View {
     @EnvironmentObject private var history: HistoryStore
 
     @FocusState private var inputFocused: Bool
+    @State private var showingHistory = false
 
     let onClose: () -> Void
 
@@ -36,8 +37,8 @@ struct PopupView: View {
                 resultView(result)
             }
 
-            if !history.entries.isEmpty {
-                recentView
+            if showingHistory, !history.entries.isEmpty {
+                historyView
             }
         }
         .padding(18)
@@ -86,6 +87,15 @@ struct PopupView: View {
             .fixedSize()
 
             Spacer()
+
+            Button {
+                showingHistory.toggle()
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+            }
+            .buttonStyle(.borderless)
+            .help("History")
+            .disabled(history.entries.isEmpty)
         }
         .foregroundStyle(.secondary)
     }
@@ -136,32 +146,49 @@ struct PopupView: View {
         }
     }
 
-    private var recentView: some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private var historyView: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Text("Recent")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-            ForEach(history.entries.prefix(4)) { entry in
-                Button {
-                    vm.loadFromHistory(entry)
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(entry.original)
-                            .lineLimit(1)
-                            .foregroundStyle(.secondary)
-                        Image(systemName: "arrow.right")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(entry.translation)
-                            .lineLimit(1)
-                        Spacer()
-                    }
-                    .font(.caption)
-                    .contentShape(Rectangle())
+            HStack {
+                Text("History")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Clear") {
+                    history.clear()
+                    showingHistory = false
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .font(.caption)
             }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(history.entries) { entry in
+                        Button {
+                            vm.loadFromHistory(entry)
+                            showingHistory = false
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(Languages.name(for: entry.sourceCode)) → \(Languages.name(for: entry.targetCode))")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Text(entry.original)
+                                    .lineLimit(1)
+                                    .foregroundStyle(.secondary)
+                                Text(entry.translation)
+                                    .lineLimit(2)
+                            }
+                            .font(.callout)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.plain)
+                        Divider().opacity(0.35)
+                    }
+                }
+            }
+            .frame(maxHeight: 260)
         }
     }
 

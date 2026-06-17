@@ -11,6 +11,8 @@ final class PanelController {
     /// Fixed popup width; height tracks SwiftUI content via the hosting controller.
     private let initialSize = NSSize(width: 640, height: 140)
 
+    private var lastHiddenAt: Date?
+
     init(viewModel: PopupViewModel) {
         self.viewModel = viewModel
     }
@@ -21,6 +23,12 @@ final class PanelController {
         if isVisible {
             hide()
         } else {
+            // If the panel was just hidden (this status-item click stole focus → the panel resigned
+            // key and closed itself), treat the click as a dismiss rather than an immediate reopen.
+            if let hiddenAt = lastHiddenAt, Date().timeIntervalSince(hiddenAt) < 0.3 {
+                lastHiddenAt = nil
+                return
+            }
             show()
         }
     }
@@ -46,6 +54,8 @@ final class PanelController {
     }
 
     func hide() {
+        guard panel?.isVisible == true else { return }
+        lastHiddenAt = Date()
         panel?.orderOut(nil)
     }
 
