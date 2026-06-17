@@ -76,6 +76,8 @@ struct PopupView: View {
         .onReceive(NotificationCenter.default.publisher(for: .focusPopupInput)) { _ in
             if picking == nil { focusInput() }
         }
+        .onChange(of: preferences.sourceCode) { _, _ in vm.retranslateForLanguageChange() }
+        .onChange(of: preferences.targetCode) { _, _ in vm.retranslateForLanguageChange() }
     }
 
     // MARK: - Language bar
@@ -298,31 +300,39 @@ struct PopupView: View {
 
     private func resultView(_ result: TranslationOutcome) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionActionHeader {
-                if let detected = result.detectedSourceName {
-                    Text("Detected: \(detected)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } trailing: {
-                Button {
-                    vm.copyResult()
-                } label: {
-                    Label(vm.justCopied ? "Copied" : "Copy",
-                          systemImage: vm.justCopied ? "checkmark" : "doc.on.doc")
-                        .foregroundStyle(vm.justCopied ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
-                }
-                .buttonStyle(.appHover)
-                .animation(Theme.Motion.copyState, value: vm.justCopied)
-                .keyboardShortcut("c", modifiers: .command)
-                .help("Copy translation (⌘C)")
+            Divider()
+
+            // Only shown for auto-detect; no empty row when the source is set explicitly.
+            if let detected = result.detectedSourceName {
+                Text("Detected: \(detected)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            Text(result.translation)
-                .font(Theme.Fonts.largeBody)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true) // show ALL lines (don't clip to one)
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Copy sits next to the text (top-right), so there's no floating empty header line.
+            HStack(alignment: .top, spacing: 8) {
+                Text(result.translation)
+                    .font(Theme.Fonts.largeBody)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true) // show ALL lines (don't clip to one)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                copyButton
+            }
         }
+    }
+
+    private var copyButton: some View {
+        Button {
+            vm.copyResult()
+        } label: {
+            Label(vm.justCopied ? "Copied" : "Copy",
+                  systemImage: vm.justCopied ? "checkmark" : "doc.on.doc")
+                .foregroundStyle(vm.justCopied ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+        }
+        .buttonStyle(.appHover)
+        .animation(Theme.Motion.copyState, value: vm.justCopied)
+        .keyboardShortcut("c", modifiers: .command)
+        .help("Copy translation (⌘C)")
     }
 
     private var historyView: some View {
