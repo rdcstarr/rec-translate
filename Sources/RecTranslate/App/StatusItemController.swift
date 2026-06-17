@@ -3,14 +3,15 @@ import AppKit
 /// Manages the menu-bar status item directly (instead of SwiftUI's MenuBarExtra) so a **left click**
 /// opens the popup and a **right click** (or Control-click) shows the interactive menu.
 ///
-/// The menu is shown with `NSMenu.popUp(...)` rather than by temporarily assigning `statusItem.menu`
-/// (the latter is fragile and can swallow the next left click). We never set `statusItem.menu`, so
-/// the button's action fires for both mouse buttons and we route on the event type.
+/// Right-clicks are caught by a local `rightMouseDown` event monitor rather than the button's
+/// action — some macOS versions don't deliver the action on right-click for a status-item button,
+/// which is why the earlier approaches showed nothing. Left-click uses the button action.
 @MainActor
 final class StatusItemController: NSObject {
     private let statusItem: NSStatusItem
     private let onOpen: () -> Void
     private let onCheckUpdates: () -> Void
+    private var rightClickMonitor: Any?
 
     init(onOpen: @escaping () -> Void, onCheckUpdates: @escaping () -> Void) {
         self.onOpen = onOpen
@@ -20,25 +21,42 @@ final class StatusItemController: NSObject {
 
         if let button = statusItem.button {
             let image = NSImage(systemSymbolName: "character.bubble.fill", accessibilityDescription: "Rec Translate")
-            image?.isTemplate = true // adapts to the (transparent, light/dark) menu bar
+            image?.isTemplate = true
             button.image = image
             button.toolTip = "Rec Translate — click to translate, right-click for menu"
             button.target = self
-            button.action = #selector(handleClick)
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.action = #selector(handleLeftClick)
+            button.sendAction(on: [.leftMouseUp]) // left handled here; right handled by the monitor
+        }
+
+        // Reliable right-click handling: a status item's button lives in its own window inside our
+        // process, so a local rightMouseDown monitor catches clicks on it across macOS versions.
+        rightClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown]) { [weak self] event in
+            guard let self else { return event }
+            return MainActor.assumeIsolated {
+                if let buttonWindow = self.statusItem.button?.window, event.window === buttonWindow {
+                    self.showMenu()
+                    return nil // consume
+                }
+                return event
+            }
         }
     }
 
-    @objc private func handleClick() {
-        let event = NSApp.currentEvent
-        let isRightClick = event?.type == .rightMouseUp || (event?.modifierFlags.contains(.control) ?? false)
-        if isRightClick, let button = statusItem.button {
-            let menu = makeMenu()
-            // Drop the menu just below the status item.
-            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
+    @objc private func handleLeftClick() {
+        // Control-click also opens the menu (it arrives as a left click with the .control modifier).
+        if NSApp.currentEvent?.modifierFlags.contains(.control) == true {
+            showMenu()
         } else {
             onOpen()
         }
+    }
+
+    private func showMenu() {
+        let menu = makeMenu()
+        statusItem.menu = menu                 // assigning a menu makes the next click open it…
+        statusItem.button?.performClick(nil)   // …and performClick opens it now (blocks until closed)
+        statusItem.menu = nil                  // detach so the next left click runs the action again
     }
 
     private func makeMenu() -> NSMenu {
