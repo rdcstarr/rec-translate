@@ -30,6 +30,8 @@ final class PopupViewModel: ObservableObject {
         guard preferences.autoTranslate else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
+        // Stay silent until a token is set, so auto-translate doesn't spam "No API key" while typing.
+        guard let key = KeychainStore.apiKey, !key.isEmpty else { return }
         if let current = result, current.original == trimmed { return } // already translated
         requestTranslate()
     }

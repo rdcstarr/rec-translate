@@ -42,10 +42,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
         addItem(to: menu, title: "Open Rec Translate", action: #selector(openAction))
-        addItem(to: menu, title: "Settings…", action: #selector(settingsAction), key: ",")
+        addItem(to: menu, title: "Settings…", action: #selector(settingsAction))
         addItem(to: menu, title: "Check for Updates…", action: #selector(updatesAction))
         menu.addItem(.separator())
-        addItem(to: menu, title: "Quit Rec Translate", action: #selector(quitAction), key: "q")
+        addItem(to: menu, title: "Quit Rec Translate", action: #selector(quitAction))
         return menu
     }
 
