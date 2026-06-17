@@ -33,13 +33,16 @@ final class StatusItemController: NSObject {
         // process, so a local rightMouseDown monitor catches clicks on it across macOS versions.
         rightClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown]) { [weak self] event in
             guard let self else { return event }
-            return MainActor.assumeIsolated {
-                if let buttonWindow = self.statusItem.button?.window, event.window === buttonWindow {
-                    self.showMenu()
-                    return nil // consume
-                }
-                return event
+            // Extract a Sendable identifier here (NSEvent isn't Sendable, so don't capture it across
+            // the actor hop), then compare on the main actor against the status item's window.
+            let eventWindowID = event.window.map(ObjectIdentifier.init)
+            let isOnStatusItem = MainActor.assumeIsolated { () -> Bool in
+                guard let buttonWindow = self.statusItem.button?.window else { return false }
+                return eventWindowID == ObjectIdentifier(buttonWindow)
             }
+            guard isOnStatusItem else { return event }
+            MainActor.assumeIsolated { self.showMenu() }
+            return nil // consume
         }
     }
 
