@@ -4,10 +4,10 @@ import SwiftUI
 /// Used for the History / Settings / Swap controls so they look and feel identical.
 struct IconButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        Body(configuration: configuration)
+        IconButtonBody(configuration: configuration)
     }
 
-    private struct Body: View {
+    private struct IconButtonBody: View {
         let configuration: ButtonStyleConfiguration
         @State private var hovering = false
 
