@@ -22,16 +22,31 @@ struct TranslationService: Sendable {
 
         let result = try await provider.translate(text: trimmed, source: sourceCode, target: targetCode)
 
+        // Google lowercases single-word translations; mirror the source's leading capitalization
+        // so "Hello" -> "Bună" (not "bună").
+        var translation = result.translation
+        if let sourceLetter = trimmed.first(where: { $0.isLetter }), sourceLetter.isUppercase {
+            translation = translation.uppercasingFirstLetter()
+        }
+
         let detectedSourceName: String? = (sourceCode == Language.auto.code)
             ? result.detected.map { Languages.name(for: $0) }
             : nil
 
         return TranslationOutcome(
             original: trimmed,
-            translation: result.translation,
+            translation: translation,
             resolvedSourceCode: result.detected ?? sourceCode,
             targetCode: targetCode,
             detectedSourceName: detectedSourceName
         )
+    }
+}
+
+private extension String {
+    /// Uppercases the first alphabetic character (leaving leading punctuation/quotes intact).
+    func uppercasingFirstLetter() -> String {
+        guard let index = firstIndex(where: { $0.isLetter }), self[index].isLowercase else { return self }
+        return self[..<index] + self[index].uppercased() + self[self.index(after: index)...]
     }
 }

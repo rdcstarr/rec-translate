@@ -8,11 +8,13 @@ final class PopupViewModel: ObservableObject {
     @Published var result: TranslationOutcome?
     @Published var isTranslating = false
     @Published var errorMessage: String?
+    @Published var justCopied = false
 
     private let preferences: Preferences
     private let history: HistoryStore
     private var cancellables = Set<AnyCancellable>()
     private var translateTask: Task<Void, Never>?
+    private var copiedResetTask: Task<Void, Never>?
 
     init(preferences: Preferences = .shared, history: HistoryStore = .shared) {
         self.preferences = preferences
@@ -104,6 +106,15 @@ final class PopupViewModel: ObservableObject {
     func copyResult() {
         guard let translation = result?.translation else { return }
         copyToPasteboard(translation)
+
+        // Brief "Copied" confirmation on the button.
+        justCopied = true
+        copiedResetTask?.cancel()
+        copiedResetTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            self?.justCopied = false
+        }
     }
 
     func loadFromHistory(_ entry: HistoryEntry) {

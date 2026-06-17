@@ -124,7 +124,16 @@ struct PopupView: View {
             .menuStyle(.button)
             .buttonStyle(IconButtonStyle())
             .menuIndicator(.hidden)
-            .help("More")
+            .overlay(alignment: .topTrailing) {
+                if updater.availableUpdate != nil {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 7, height: 7)
+                        .overlay(Circle().strokeBorder(.background, lineWidth: 1))
+                        .offset(x: -2, y: 3)
+                }
+            }
+            .help(updater.availableUpdate != nil ? "Update available — open menu to install" : "More")
         }
         .foregroundStyle(.secondary)
     }
@@ -285,36 +294,29 @@ struct PopupView: View {
 
     private var inputField: some View {
         HStack(alignment: .top, spacing: 6) {
-            ZStack(alignment: .topLeading) {
-                if vm.inputText.isEmpty {
-                    Text("Type or paste text — Return translates, ⇧Return = new line")
-                        .font(.system(size: 18))
-                        .foregroundStyle(.tertiary)
-                        .padding(.leading, 5)
-                        .padding(.top, 1)
-                        .allowsHitTesting(false)
-                }
-                TextEditor(text: $vm.inputText)
-                    .font(.system(size: 18))
-                    .scrollContentBackground(.hidden)
-                    .scrollIndicators(.hidden)
-                    .frame(minHeight: 32, maxHeight: 170)
-                    .focused($inputFocused)
-                    .onKeyPress(phases: .down) { press in
-                        if press.key == .return {
-                            // TextEditor inserts a newline on Return; let Shift+Return through for a
-                            // new line, and translate on plain Return.
-                            if NSEvent.modifierFlags.contains(.shift) { return .ignored }
-                            vm.requestTranslate()
+            // TextField (not TextEditor) so there's no scroll-view chrome / black scroller line.
+            TextField("Type or paste text — Return translates, ⇧Return = new line", text: $vm.inputText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(.system(size: 18))
+                .lineLimit(1 ... 8)
+                .focused($inputFocused)
+                .onKeyPress(phases: .down) { press in
+                    if press.key == .return {
+                        // TextField(axis:.vertical) doesn't insert a newline on its own, so do it
+                        // explicitly for Shift+Return; plain Return translates.
+                        if NSEvent.modifierFlags.contains(.shift) {
+                            vm.inputText += "\n"
                             return .handled
                         }
-                        if press.key == .escape {
-                            onClose()
-                            return .handled
-                        }
-                        return .ignored
+                        vm.requestTranslate()
+                        return .handled
                     }
-            }
+                    if press.key == .escape {
+                        onClose()
+                        return .handled
+                    }
+                    return .ignored
+                }
 
             if !vm.inputText.isEmpty {
                 Button {
@@ -342,9 +344,12 @@ struct PopupView: View {
                 Button {
                     vm.copyResult()
                 } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
+                    Label(vm.justCopied ? "Copied" : "Copy",
+                          systemImage: vm.justCopied ? "checkmark" : "doc.on.doc")
+                        .foregroundStyle(vm.justCopied ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
                 }
                 .buttonStyle(HoverButtonStyle())
+                .animation(.easeOut(duration: 0.15), value: vm.justCopied)
                 .keyboardShortcut("c", modifiers: .command)
                 .help("Copy translation (⌘C)")
             }
