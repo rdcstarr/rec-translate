@@ -16,7 +16,6 @@ struct PopupView: View {
     @State private var picking: PickerField?
     @State private var query = ""
     @State private var focusRequested = false
-    @State private var moreHovering = false
 
     let onClose: () -> Void
 
@@ -120,19 +119,11 @@ struct PopupView: View {
                 Divider()
                 Button("Quit Rec Translate") { NSApp.terminate(nil) }
             } label: {
-                Image(systemName: "ellipsis")
-                    .frame(width: 28, height: 24)
-                    .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                Image(systemName: "ellipsis").foregroundStyle(.secondary)
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .buttonStyle(IconButtonStyle())
             .menuIndicator(.hidden)
-            .fixedSize()
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.primary.opacity(moreHovering ? 0.09 : 0))
-            )
-            .onHover { moreHovering = $0 }
-            .animation(.easeOut(duration: 0.12), value: moreHovering)
             .help("More")
         }
         .foregroundStyle(.secondary)
@@ -175,7 +166,7 @@ struct PopupView: View {
                 Image(systemName: "chevron.down").font(.caption2).opacity(0.6)
             }
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(HoverButtonStyle())
         .help(field == .source ? "Source language" : "Target language")
     }
 
@@ -294,24 +285,35 @@ struct PopupView: View {
 
     private var inputField: some View {
         HStack(alignment: .top, spacing: 6) {
-            TextField("Type or paste text — Return translates, ⇧Return = new line", text: $vm.inputText, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.system(size: 18))
-                .lineLimit(1 ... 8)
-                .focused($inputFocused)
-                .onKeyPress(phases: .down) { press in
-                    if press.key == .return {
-                        // Shift+Return inserts a newline; plain Return translates.
-                        if NSEvent.modifierFlags.contains(.shift) { return .ignored }
-                        vm.requestTranslate()
-                        return .handled
-                    }
-                    if press.key == .escape {
-                        onClose()
-                        return .handled
-                    }
-                    return .ignored
+            ZStack(alignment: .topLeading) {
+                if vm.inputText.isEmpty {
+                    Text("Type or paste text — Return translates, ⇧Return = new line")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 5)
+                        .padding(.top, 1)
+                        .allowsHitTesting(false)
                 }
+                TextEditor(text: $vm.inputText)
+                    .font(.system(size: 18))
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 32, maxHeight: 170)
+                    .focused($inputFocused)
+                    .onKeyPress(phases: .down) { press in
+                        if press.key == .return {
+                            // TextEditor inserts a newline on Return; let Shift+Return through for a
+                            // new line, and translate on plain Return.
+                            if NSEvent.modifierFlags.contains(.shift) { return .ignored }
+                            vm.requestTranslate()
+                            return .handled
+                        }
+                        if press.key == .escape {
+                            onClose()
+                            return .handled
+                        }
+                        return .ignored
+                    }
+            }
 
             if !vm.inputText.isEmpty {
                 Button {
@@ -320,7 +322,7 @@ struct PopupView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(IconButtonStyle())
                 .help("Clear")
             }
         }
