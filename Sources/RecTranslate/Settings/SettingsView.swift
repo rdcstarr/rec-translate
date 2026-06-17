@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import KeyboardShortcuts
 
 struct SettingsView: View {
@@ -56,6 +57,7 @@ struct SettingsView: View {
             }
 
             Section("Behavior") {
+                Toggle("Translate automatically as you type", isOn: $preferences.autoTranslate)
                 Toggle("Copy translation automatically", isOn: $preferences.autoCopy)
                 Stepper("Keep last \(preferences.historyLimit) translations", value: $preferences.historyLimit, in: 0...100)
                 Button("Clear History") { HistoryStore.shared.clear() }
@@ -95,22 +97,32 @@ struct SettingsView: View {
 
     private var accessibilityStatusRow: some View {
         let granted = DoubleShiftMonitor.hasAccessibilityPermission()
-        return HStack {
-            if granted {
-                Label("Accessibility permission granted", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-            } else {
-                Label("Needs Accessibility permission", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                Spacer()
-                Button("Grant…") {
-                    DoubleShiftMonitor.requestAccessibilityPermission()
-                    permissionRefresh.toggle()
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                if granted {
+                    Label("Accessibility permission granted", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Label("Needs Accessibility permission", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Spacer()
+                    Button("Open Accessibility Settings") { openAccessibilitySettings() }
                 }
             }
+            .font(.callout)
+            Text("After granting it, **quit and reopen Rec Translate** — macOS only applies the permission on the next launch. (Free/ad-hoc builds may need re-granting after an update.)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .font(.callout)
         .id(permissionRefresh)
+    }
+
+    private func openAccessibilitySettings() {
+        DoubleShiftMonitor.requestAccessibilityPermission()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+        permissionRefresh.toggle()
     }
 
     // MARK: - Updates

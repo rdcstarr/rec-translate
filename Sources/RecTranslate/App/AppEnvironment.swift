@@ -12,6 +12,7 @@ final class AppEnvironment: ObservableObject {
     let hotkeyManager = HotkeyManager()
     let doubleShiftMonitor = DoubleShiftMonitor()
     let updater = GitHubUpdater()
+    private var statusItemController: StatusItemController?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -27,18 +28,28 @@ final class AppEnvironment: ObservableObject {
         }
         applyDoubleShiftSetting()
         updater.startAutomaticChecks(enabled: Preferences.shared.autoCheckUpdates)
+
+        // Menu-bar status item: left-click opens the popup, right-click shows the menu.
+        statusItemController = StatusItemController(
+            onOpen: { [weak self] in self?.panelController.toggle() },
+            onCheckUpdates: { [weak self] in
+                Task { @MainActor in await self?.updater.checkForUpdates(userInitiated: true) }
+            }
+        )
+
         observePreferences()
     }
 
     /// Start/stop the double-Shift monitor according to the setting and current permission.
     /// Does not prompt — prompting is an explicit action in Settings.
     func applyDoubleShiftSetting() {
-        if Preferences.shared.doubleShiftEnabled, DoubleShiftMonitor.hasAccessibilityPermission() {
-            doubleShiftMonitor.start { [weak self] in
-                self?.panelController.toggle()
-            }
-        } else {
-            doubleShiftMonitor.stop()
+        // Re-arm from scratch so the global monitor re-registers (e.g. after the user returns from
+        // the Accessibility prompt). Armed whenever enabled; if not yet trusted it simply won't fire
+        // until macOS grants the permission (which takes effect on the next launch).
+        doubleShiftMonitor.stop()
+        guard Preferences.shared.doubleShiftEnabled else { return }
+        doubleShiftMonitor.start { [weak self] in
+            self?.panelController.toggle()
         }
     }
 

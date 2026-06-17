@@ -13,29 +13,8 @@ struct RecTranslateApp: App {
         .defaultSize(width: 1, height: 1)
         .windowStyle(.hiddenTitleBar)
 
-        MenuBarExtra("Rec Translate", systemImage: "character.bubble.fill") {
-            Button("Open Rec Translate") {
-                AppEnvironment.shared.panelController.show()
-            }
-            Button("Settings…") {
-                NotificationCenter.default.post(name: .openSettingsRequest, object: nil)
-            }
-            .keyboardShortcut(",", modifiers: .command)
-
-            Divider()
-
-            Button("Check for Updates…") {
-                Task { await AppEnvironment.shared.updater.checkForUpdates(userInitiated: true) }
-            }
-
-            Divider()
-
-            Button("Quit Rec Translate") {
-                NSApp.terminate(nil)
-            }
-            .keyboardShortcut("q", modifiers: .command)
-        }
-        .menuBarExtraStyle(.menu)
+        // The menu-bar item is managed in AppKit (StatusItemController) so left-click opens the
+        // popup and right-click shows the menu — behaviour MenuBarExtra can't express.
 
         Settings {
             SettingsView()

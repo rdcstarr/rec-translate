@@ -99,7 +99,7 @@ struct PopupView: View {
             .onKeyPress(phases: .down) { press in
                 if press.key == .return {
                     if press.modifiers.contains(.shift) { return .ignored }
-                    Task { await vm.translate() }
+                    vm.requestTranslate()
                     return .handled
                 }
                 if press.key == .escape {

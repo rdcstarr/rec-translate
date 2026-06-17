@@ -16,6 +16,7 @@ final class Preferences: ObservableObject {
         // v2 key so the new proxy123 default applies even for installs that saved the old default.
         static let baseURL = "pref.apiBaseURL.v2"
         static let autoCopy = "pref.autoCopy"
+        static let autoTranslate = "pref.autoTranslate"
         static let doubleShift = "pref.doubleShiftEnabled"
         static let autoUpdates = "pref.autoCheckUpdates"
         static let historyLimit = "pref.historyLimit"
@@ -25,6 +26,7 @@ final class Preferences: ObservableObject {
     @Published var targetCode: String { didSet { defaults.set(targetCode, forKey: Key.target) } }
     @Published var baseURLString: String { didSet { defaults.set(baseURLString, forKey: Key.baseURL) } }
     @Published var autoCopy: Bool { didSet { defaults.set(autoCopy, forKey: Key.autoCopy) } }
+    @Published var autoTranslate: Bool { didSet { defaults.set(autoTranslate, forKey: Key.autoTranslate) } }
     @Published var doubleShiftEnabled: Bool { didSet { defaults.set(doubleShiftEnabled, forKey: Key.doubleShift) } }
     @Published var autoCheckUpdates: Bool { didSet { defaults.set(autoCheckUpdates, forKey: Key.autoUpdates) } }
     @Published var historyLimit: Int { didSet { defaults.set(historyLimit, forKey: Key.historyLimit) } }
@@ -34,6 +36,7 @@ final class Preferences: ObservableObject {
         targetCode = defaults.string(forKey: Key.target) ?? "ro"
         baseURLString = defaults.string(forKey: Key.baseURL) ?? "https://proxy123.click"
         autoCopy = (defaults.object(forKey: Key.autoCopy) as? Bool) ?? true
+        autoTranslate = (defaults.object(forKey: Key.autoTranslate) as? Bool) ?? true
         doubleShiftEnabled = (defaults.object(forKey: Key.doubleShift) as? Bool) ?? true
         autoCheckUpdates = (defaults.object(forKey: Key.autoUpdates) as? Bool) ?? true
         historyLimit = (defaults.object(forKey: Key.historyLimit) as? Int) ?? 20
