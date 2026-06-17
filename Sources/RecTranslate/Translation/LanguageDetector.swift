@@ -9,7 +9,7 @@ enum LanguageDetector {
     /// The supported languages as NLLanguage constraints (excludes everything we don't offer).
     private static let constraints: [NLLanguage] = {
         var languages: [NLLanguage] = []
-        for code in Languages.targets.map(\.code) {
+        for code in Languages.detectableCodes {
             if code == "zh" {
                 languages.append(.simplifiedChinese)
                 languages.append(.traditionalChinese)
