@@ -45,8 +45,13 @@ ditto "${SRC}" "${DEST}/${APP}"
 echo "==> Clearing Gatekeeper quarantine..."
 xattr -dr com.apple.quarantine "${DEST}/${APP}" 2>/dev/null || true
 
+# Register with LaunchServices so Finder/Launchpad show the icon and the first launch is reliable
+# (a freshly-copied bundle is otherwise not registered yet, so the first `open` can no-op).
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+[ -x "${LSREGISTER}" ] && "${LSREGISTER}" -f "${DEST}/${APP}" >/dev/null 2>&1 || true
+
 echo "==> Launching..."
-open "${DEST}/${APP}"
+open "${DEST}/${APP}" || { sleep 1; open "${DEST}/${APP}"; }
 
 echo ""
 echo "Done. Rec Translate is installed in ${DEST} and running -- look for the speech-bubble icon in the menu bar."

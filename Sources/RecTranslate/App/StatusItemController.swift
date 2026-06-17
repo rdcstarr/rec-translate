@@ -2,8 +2,12 @@ import AppKit
 
 /// Manages the menu-bar status item directly (instead of SwiftUI's MenuBarExtra) so a **left click**
 /// opens the popup and a **right click** (or Control-click) shows the interactive menu.
+///
+/// The menu is shown with `NSMenu.popUp(...)` rather than by temporarily assigning `statusItem.menu`
+/// (the latter is fragile and can swallow the next left click). We never set `statusItem.menu`, so
+/// the button's action fires for both mouse buttons and we route on the event type.
 @MainActor
-final class StatusItemController: NSObject, NSMenuDelegate {
+final class StatusItemController: NSObject {
     private let statusItem: NSStatusItem
     private let onOpen: () -> Void
     private let onCheckUpdates: () -> Void
@@ -28,11 +32,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func handleClick() {
         let event = NSApp.currentEvent
         let isRightClick = event?.type == .rightMouseUp || (event?.modifierFlags.contains(.control) ?? false)
-        if isRightClick {
-            // Temporarily attach a menu and click to open it; cleared again in menuDidClose so the
-            // next left click triggers the action rather than the menu.
-            statusItem.menu = makeMenu()
-            statusItem.button?.performClick(nil)
+        if isRightClick, let button = statusItem.button {
+            let menu = makeMenu()
+            // Drop the menu just below the status item.
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
         } else {
             onOpen()
         }
@@ -40,7 +43,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.delegate = self
         addItem(to: menu, title: "Open Rec Translate", action: #selector(openAction))
         addItem(to: menu, title: "Settings…", action: #selector(settingsAction))
         addItem(to: menu, title: "Check for Updates…", action: #selector(updatesAction))
@@ -49,8 +51,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         return menu
     }
 
-    private func addItem(to menu: NSMenu, title: String, action: Selector, key: String = "") {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+    private func addItem(to menu: NSMenu, title: String, action: Selector) {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
         menu.addItem(item)
     }
@@ -59,9 +61,4 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func settingsAction() { NotificationCenter.default.post(name: .openSettingsRequest, object: nil) }
     @objc private func updatesAction() { onCheckUpdates() }
     @objc private func quitAction() { NSApp.terminate(nil) }
-
-    // Detach the menu after it closes so the next left click runs the action, not the menu.
-    func menuDidClose(_ menu: NSMenu) {
-        statusItem.menu = nil
-    }
 }
