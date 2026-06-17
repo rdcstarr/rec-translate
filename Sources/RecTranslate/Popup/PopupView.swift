@@ -297,6 +297,7 @@ struct PopupView: View {
                 TextEditor(text: $vm.inputText)
                     .font(.system(size: 18))
                     .scrollContentBackground(.hidden)
+                    .scrollIndicators(.hidden)
                     .frame(minHeight: 32, maxHeight: 170)
                     .focused($inputFocused)
                     .onKeyPress(phases: .down) { press in
@@ -343,13 +344,14 @@ struct PopupView: View {
                 } label: {
                     Label("Copy", systemImage: "doc.on.doc")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(HoverButtonStyle())
                 .keyboardShortcut("c", modifiers: .command)
                 .help("Copy translation (⌘C)")
             }
             Text(result.translation)
                 .font(.system(size: 18))
                 .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true) // show ALL lines (don't clip to one)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
