@@ -27,6 +27,9 @@ jobs:
           TAG="${GITHUB_REF_NAME#v}"
           echo "version=${TAG:-0.0.0}" >> "$GITHUB_OUTPUT"
 
+      - name: Install librsvg (crisp, full-bleed flag rasterization)
+        run: brew install librsvg
+
       - name: Bundle .app
         run: ./Scripts/bundle.sh "${{ steps.ver.outputs.version }}" "${{ github.run_number }}"
 

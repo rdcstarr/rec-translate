@@ -45,6 +45,9 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
           rm -f "$RUNNER_TEMP/cert.p12"
 
+      - name: Install librsvg (crisp, full-bleed flag rasterization)
+        run: brew install librsvg
+
       - name: Bundle .app
         run: ./Scripts/bundle.sh "${{ steps.ver.outputs.version }}" "${{ steps.ver.outputs.build }}"
 

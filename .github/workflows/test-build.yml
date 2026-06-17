@@ -16,6 +16,9 @@ jobs:
       - name: Select Xcode 26
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Install librsvg (crisp, full-bleed flag rasterization)
+        run: brew install librsvg
+
       - name: Bundle .app
         run: ./Scripts/bundle.sh "0.0.0-test" "${{ github.run_number }}"
 
