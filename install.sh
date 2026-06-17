@@ -6,6 +6,9 @@
 #
 # Downloads the latest release build, installs it to Applications, clears the Gatekeeper
 # quarantine (these builds are ad-hoc signed, not notarized), and launches it.
+#
+# NOTE: ASCII-only, fully braced ${VAR} expansions -- so it is safe in any locale (a multibyte
+# char glued to a bare $VAR can otherwise be misparsed as part of the variable name).
 set -euo pipefail
 
 REPO="rdcstarr/rec-translate"
@@ -15,43 +18,41 @@ ZIP_URL="https://github.com/${REPO}/releases/latest/download/RecTranslate.zip"
 command -v curl >/dev/null || { echo "ERROR: curl is required."; exit 1; }
 
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+trap 'rm -rf "${TMP}"' EXIT
 
-echo "==> Downloading RecTranslate…"
-curl -fSL "$ZIP_URL" -o "$TMP/RecTranslate.zip" || {
-  echo "ERROR: could not download $ZIP_URL"
+echo "==> Downloading RecTranslate..."
+curl -fSL "${ZIP_URL}" -o "${TMP}/RecTranslate.zip" || {
+  echo "ERROR: could not download ${ZIP_URL}"
   echo "       (Has a release been published yet?)"
   exit 1
 }
 
-echo "==> Unpacking…"
-ditto -x -k "$TMP/RecTranslate.zip" "$TMP/extracted"
-SRC="$(/usr/bin/find "$TMP/extracted" -maxdepth 2 -name "$APP" -type d | head -1)"
-[ -n "$SRC" ] || { echo "ERROR: $APP not found inside the archive."; exit 1; }
+echo "==> Unpacking..."
+ditto -x -k "${TMP}/RecTranslate.zip" "${TMP}/extracted"
+SRC="$(/usr/bin/find "${TMP}/extracted" -maxdepth 2 -name "${APP}" -type d | head -1)"
+[ -n "${SRC}" ] || { echo "ERROR: ${APP} not found inside the archive."; exit 1; }
 
 DEST="/Applications"
-if [ ! -w "$DEST" ]; then
-  DEST="$HOME/Applications"
-  mkdir -p "$DEST"
+if [ ! -w "${DEST}" ]; then
+  DEST="${HOME}/Applications"
+  mkdir -p "${DEST}"
 fi
 
-echo "==> Installing to $DEST…"
-rm -rf "${DEST:?}/$APP"
-ditto "$SRC" "$DEST/$APP"
+echo "==> Installing to ${DEST} ..."
+rm -rf "${DEST:?}/${APP}"
+ditto "${SRC}" "${DEST}/${APP}"
 
-echo "==> Clearing Gatekeeper quarantine…"
-xattr -dr com.apple.quarantine "$DEST/$APP" 2>/dev/null || true
+echo "==> Clearing Gatekeeper quarantine..."
+xattr -dr com.apple.quarantine "${DEST}/${APP}" 2>/dev/null || true
 
-echo "==> Launching…"
-open "$DEST/$APP"
+echo "==> Launching..."
+open "${DEST}/${APP}"
 
-cat <<EOF
-
-✅ RecTranslate is installed in $DEST and running — look for the speech-bubble icon in the menu bar.
-
-Next steps:
-  1. Click the menu-bar icon → Settings…
-  2. Paste your rec-app translate API key (the one with the "translate" ability).
-     The base URL defaults to https://rec-app.recweb.app — change it there if needed.
-  3. Press your hotkey (⌥Space, or double-tap Shift) and start translating.
-EOF
+echo ""
+echo "Done. RecTranslate is installed in ${DEST} and running -- look for the speech-bubble icon in the menu bar."
+echo ""
+echo "Next steps:"
+echo "  1. Click the menu-bar icon, then Settings..."
+echo "  2. Paste your rec-app translate API key (the one with the 'translate' ability)."
+echo "     The base URL defaults to https://rec-app.recweb.app"
+echo "  3. Press your hotkey (Option+Space, or double-tap Shift) and translate."
