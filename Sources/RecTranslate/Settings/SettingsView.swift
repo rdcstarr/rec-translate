@@ -130,6 +130,12 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            // Returning from System Settings after granting: re-read the status and restart the
+            // global monitor so the permission can take effect without a relaunch when possible.
+            AppEnvironment.shared.applyDoubleShiftSetting()
+            permissionRefresh.toggle()
+        }
     }
 
     private var accessibilityStatusRow: some View {
@@ -147,7 +153,7 @@ struct SettingsView: View {
                 }
             }
             .font(.callout)
-            Text("After granting it, **quit and reopen Rec Translate** — macOS only applies the permission on the next launch. (Free/ad-hoc builds may need re-granting after an update.)")
+            Text("If it still says “Needs permission” after granting, the entry is **stale from a previous update**: free/ad-hoc builds change signature on every update, so macOS keeps showing the old toggle as on but doesn’t actually trust the new build. Fix it in Accessibility — select **Rec Translate**, click **“–”** to remove it, then **“+”** to add it back, and **quit & reopen** the app. The recorded shortcut above always works without this permission.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
