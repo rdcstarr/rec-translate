@@ -24,7 +24,7 @@ final class Preferences: ObservableObject {
         static let openAIModel = "pref.openAIModel"
     }
 
-    static let defaultOpenAIModel = "gpt-4o-mini"
+    static let defaultOpenAIModel = "gpt-5.4-mini"
 
     @Published var sourceCode: String { didSet { defaults.set(sourceCode, forKey: Key.source) } }
     @Published var targetCode: String { didSet { defaults.set(targetCode, forKey: Key.target) } }

@@ -87,7 +87,7 @@ struct SettingsView: View {
                     }
                     TextField("Model", text: $preferences.openAIModel, prompt: Text(Preferences.defaultOpenAIModel))
                         .autocorrectionDisabled()
-                    Text("Create a key at platform.openai.com. Stored locally in a protected file. `gpt-4o-mini` is cheap and great for translation; use a stronger model for nuanced text.")
+                    Text("Create a key at platform.openai.com. Stored locally in a protected file. `gpt-5.4-mini` is cheap, fast and great for translation; use `gpt-5.4` or `gpt-5.5` for nuanced text. (OpenAI has no dedicated text-translation model — this uses Chat Completions.)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
