@@ -65,8 +65,9 @@ struct ProviderResult: Sendable {
     let detected: String?
 }
 
-/// Maximum characters accepted by the server (`GoogleTranslateService` throws at `>= 5000`).
-let kMaxTranslationCharacters = 5000
+/// Upper bound on input length. The server now chunks long text across requests (and OpenAI handles
+/// long input in one call), so this is a generous sanity cap that matches the server's limit.
+let kMaxTranslationCharacters = 20000
 
 /// All failure modes surfaced to the user, with friendly descriptions.
 enum TranslationError: LocalizedError, Sendable {
