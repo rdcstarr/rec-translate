@@ -1,15 +1,13 @@
 import Foundation
 
-/// Translates via OpenAI's Chat Completions API. OpenAI has no dedicated text-translation endpoint,
-/// so we steer a chat model with a terse system prompt to act as a translation engine and return
-/// only the translated text (preserving line breaks, formatting, and the source's shape).
-///
-///     POST https://api.openai.com/v1/chat/completions
-///     Authorization: Bearer <user's OpenAI API key>
-struct OpenAIProvider: TranslationProvider {
+/// Translates via an OpenAI-compatible Chat Completions API (OpenAI, DeepSeek, …). These services
+/// have no dedicated text-translation endpoint, so a terse system prompt steers a chat model to
+/// return only the translated text (preserving formatting and the source's shape). One provider
+/// serves every compatible backend — only the endpoint, key, and model differ.
+struct OpenAICompatibleProvider: TranslationProvider {
+    let endpoint: URL
     let apiKey: String
     let model: String
-    var endpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
 
     func translate(text: String, source: String, target: String) async throws -> ProviderResult {
         let targetName = Languages.name(for: target)
@@ -59,19 +57,19 @@ struct OpenAIProvider: TranslationProvider {
             let content = decoded?.choices.first?.message.content?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard let content, !content.isEmpty else { throw TranslationError.decoding }
-            // OpenAI doesn't report a detected language; the on-device detector covers the label.
+            // Compatible APIs don't report a detected language; the on-device detector covers the label.
             return ProviderResult(translation: content, detected: nil)
         case 401:
             throw TranslationError.unauthorized
         case 429:
-            throw TranslationError.upstreamFailure("OpenAI rate limit or quota exceeded — check your plan and billing.")
+            throw TranslationError.upstreamFailure("Rate limit or quota exceeded — check your plan and billing.")
         default:
             let apiError = try? JSONDecoder().decode(ErrorResponse.self, from: data)
             throw TranslationError.unexpectedStatus(http.statusCode, apiError?.error.message)
         }
     }
 
-    // MARK: - Wire formats
+    // MARK: - Wire formats (OpenAI-compatible)
 
     private struct ChatRequest: Encodable {
         let model: String
@@ -94,4 +92,10 @@ struct OpenAIProvider: TranslationProvider {
         let error: APIError
         struct APIError: Decodable { let message: String? }
     }
+}
+
+/// Endpoints for the OpenAI-compatible backends the app supports.
+enum ChatCompletionsEndpoint {
+    static let openAI = URL(string: "https://api.openai.com/v1/chat/completions")!
+    static let deepSeek = URL(string: "https://api.deepseek.com/v1/chat/completions")!
 }

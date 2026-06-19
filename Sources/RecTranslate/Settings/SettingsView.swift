@@ -11,6 +11,9 @@ struct SettingsView: View {
     @State private var openAIKeyInput = ""
     @State private var openAIKeyStored = false
     @State private var openAIKeyStatus = ""
+    @State private var deepseekKeyInput = ""
+    @State private var deepseekKeyStored = false
+    @State private var deepseekKeyStatus = ""
     @State private var permissionRefresh = false // toggled to re-read Accessibility status
 
     var body: some View {
@@ -26,6 +29,15 @@ struct SettingsView: View {
         .onAppear {
             apiKeyStored = (TokenStore.apiKey?.isEmpty == false)
             openAIKeyStored = (TokenStore.openAIKey?.isEmpty == false)
+            deepseekKeyStored = (TokenStore.deepseekKey?.isEmpty == false)
+        }
+    }
+
+    private var engineHelpText: String {
+        switch preferences.engine {
+        case .openai: "OpenAI (your key) gives higher-quality, context-aware translations — it costs per use and is a bit slower."
+        case .deepseek: "DeepSeek (your key) is high quality at low cost via its OpenAI-compatible API — costs per use, a bit slower than Google."
+        case .google: "Google is fast and free (via your proxy123 server)."
         }
     }
 
@@ -46,9 +58,7 @@ struct SettingsView: View {
                 Picker("Translate with", selection: $preferences.engine) {
                     ForEach(TranslationEngine.allCases) { Text($0.displayName).tag($0) }
                 }
-                Text(preferences.engine == .openai
-                    ? "OpenAI (your key) gives higher-quality, context-aware translations — it costs per use and is a bit slower."
-                    : "Google is fast and free (via your proxy123 server).")
+                Text(engineHelpText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -73,7 +83,7 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            } else {
+            } else if preferences.engine == .openai {
                 Section("OpenAI") {
                     SecureField("OpenAI API key", text: $openAIKeyInput, prompt: Text(openAIKeyStored ? "•••••••• (stored)" : "Paste your sk-… key"))
                     HStack {
@@ -91,11 +101,30 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            } else {
+                Section("DeepSeek") {
+                    SecureField("DeepSeek API key", text: $deepseekKeyInput, prompt: Text(deepseekKeyStored ? "•••••••• (stored)" : "Paste your sk-… key"))
+                    HStack {
+                        Button("Save Key") { saveDeepSeekKey() }
+                            .disabled(deepseekKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                        if deepseekKeyStored {
+                            Button("Remove", role: .destructive) { removeDeepSeekKey() }
+                        }
+                        Spacer()
+                        Text(deepseekKeyStatus).font(.caption).foregroundStyle(.secondary)
+                    }
+                    TextField("Model", text: $preferences.deepseekModel, prompt: Text(Preferences.defaultDeepSeekModel))
+                        .autocorrectionDisabled()
+                    Text("Create a key at platform.deepseek.com. Stored locally in a protected file. Uses the OpenAI-compatible Chat Completions API; `deepseek-chat` is the standard model.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Behavior") {
                 Toggle("Translate automatically as you type", isOn: $preferences.autoTranslate)
                 Toggle("Copy translation automatically", isOn: $preferences.autoCopy)
+                Stepper("Text size: \(preferences.fontSizeBody) pt", value: $preferences.fontSizeBody, in: 12 ... 28)
                 Stepper("Keep last \(preferences.historyLimit) translations", value: $preferences.historyLimit, in: 0...100)
                 Button("Clear History") { HistoryStore.shared.clear() }
             }
@@ -236,6 +265,28 @@ struct SettingsView: View {
             openAIKeyStatus = "Removed."
         } catch {
             openAIKeyStatus = error.localizedDescription
+        }
+    }
+
+    private func saveDeepSeekKey() {
+        do {
+            try TokenStore.setDeepseekKey(deepseekKeyInput)
+            deepseekKeyStored = true
+            deepseekKeyInput = ""
+            deepseekKeyStatus = "Saved."
+        } catch {
+            deepseekKeyStatus = error.localizedDescription
+        }
+    }
+
+    private func removeDeepSeekKey() {
+        do {
+            try TokenStore.setDeepseekKey("")
+            deepseekKeyStored = false
+            deepseekKeyInput = ""
+            deepseekKeyStatus = "Removed."
+        } catch {
+            deepseekKeyStatus = error.localizedDescription
         }
     }
 }

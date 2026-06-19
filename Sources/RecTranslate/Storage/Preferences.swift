@@ -22,9 +22,12 @@ final class Preferences: ObservableObject {
         static let historyLimit = "pref.historyLimit"
         static let engine = "pref.engine"
         static let openAIModel = "pref.openAIModel"
+        static let deepseekModel = "pref.deepseekModel"
+        static let fontSizeBody = "pref.fontSizeBody"
     }
 
     static let defaultOpenAIModel = "gpt-5.4-mini"
+    static let defaultDeepSeekModel = "deepseek-chat"
 
     @Published var sourceCode: String { didSet { defaults.set(sourceCode, forKey: Key.source) } }
     @Published var targetCode: String { didSet { defaults.set(targetCode, forKey: Key.target) } }
@@ -36,6 +39,8 @@ final class Preferences: ObservableObject {
     @Published var historyLimit: Int { didSet { defaults.set(historyLimit, forKey: Key.historyLimit) } }
     @Published var engine: TranslationEngine { didSet { defaults.set(engine.rawValue, forKey: Key.engine) } }
     @Published var openAIModel: String { didSet { defaults.set(openAIModel, forKey: Key.openAIModel) } }
+    @Published var deepseekModel: String { didSet { defaults.set(deepseekModel, forKey: Key.deepseekModel) } }
+    @Published var fontSizeBody: Int { didSet { defaults.set(fontSizeBody, forKey: Key.fontSizeBody) } }
 
     private init() {
         sourceCode = defaults.string(forKey: Key.source) ?? Language.auto.code
@@ -49,6 +54,10 @@ final class Preferences: ObservableObject {
         engine = TranslationEngine(rawValue: defaults.string(forKey: Key.engine) ?? "") ?? .google
         let savedModel = defaults.string(forKey: Key.openAIModel)?.trimmingCharacters(in: .whitespaces)
         openAIModel = (savedModel?.isEmpty == false ? savedModel! : Preferences.defaultOpenAIModel)
+        let savedDeepSeek = defaults.string(forKey: Key.deepseekModel)?.trimmingCharacters(in: .whitespaces)
+        deepseekModel = (savedDeepSeek?.isEmpty == false ? savedDeepSeek! : Preferences.defaultDeepSeekModel)
+        let savedFont = defaults.object(forKey: Key.fontSizeBody) as? Int
+        fontSizeBody = min(max(savedFont ?? 18, 12), 28)
     }
 
     /// Parsed, validated base URL (nil when the string is malformed).

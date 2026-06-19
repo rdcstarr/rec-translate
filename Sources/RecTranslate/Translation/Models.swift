@@ -22,13 +22,25 @@ struct Language: Identifiable, Hashable, Sendable {
 enum TranslationEngine: String, CaseIterable, Identifiable, Sendable {
     case google
     case openai
+    case deepseek
 
     var id: String { rawValue }
 
+    /// Full label for Settings / menu rows.
     var displayName: String {
         switch self {
         case .google: return "Google · fast & free"
         case .openai: return "OpenAI · higher quality"
+        case .deepseek: return "DeepSeek · cost-effective"
+        }
+    }
+
+    /// Compact label for the in-popup engine pill.
+    var shortName: String {
+        switch self {
+        case .google: return "Google"
+        case .openai: return "OpenAI"
+        case .deepseek: return "DeepSeek"
         }
     }
 }
@@ -76,6 +88,7 @@ enum TranslationError: LocalizedError, Sendable {
     case couldNotDetectLanguage
     case missingAPIKey
     case missingOpenAIKey
+    case missingDeepSeekKey
     case invalidBaseURL
     case unauthorized
     case forbidden
@@ -97,6 +110,8 @@ enum TranslationError: LocalizedError, Sendable {
             return "No API key set. Add your translate API key in Settings."
         case .missingOpenAIKey:
             return "No OpenAI API key set. Add it in Settings (or switch to Google)."
+        case .missingDeepSeekKey:
+            return "No DeepSeek API key set. Add it in Settings (or switch to Google)."
         case .invalidBaseURL:
             return "The API base URL in Settings is not valid."
         case .unauthorized:

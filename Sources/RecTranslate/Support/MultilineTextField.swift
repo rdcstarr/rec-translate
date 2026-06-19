@@ -6,6 +6,7 @@ import AppKit
 /// Transparent, no scroller chrome, and self-sizing between `minHeight` and `maxHeight`.
 struct MultilineTextField: NSViewRepresentable {
     @Binding var text: String
+    var fontSize: CGFloat = 18
     var minHeight: CGFloat = 30
     var maxHeight: CGFloat = 170
     /// Bump this to (re)grab keyboard focus — e.g. on show, after clearing, or when the chooser closes.
@@ -20,7 +21,7 @@ struct MultilineTextField: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.isRichText = false
         textView.allowsUndo = true
-        textView.font = NSFont.systemFont(ofSize: 18)
+        textView.font = NSFont.systemFont(ofSize: fontSize)
         textView.drawsBackground = false
         textView.backgroundColor = .clear
         textView.textColor = .labelColor
@@ -52,6 +53,9 @@ struct MultilineTextField: NSViewRepresentable {
         guard let textView = scroll.documentView as? NSTextView else { return }
         if textView.string != text {
             textView.string = text // external change (e.g. load from history / clear)
+        }
+        if textView.font?.pointSize != fontSize {
+            textView.font = NSFont.systemFont(ofSize: fontSize) // live font-size change
         }
         if context.coordinator.lastFocusTick != focusTick {
             context.coordinator.lastFocusTick = focusTick

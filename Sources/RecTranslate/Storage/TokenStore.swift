@@ -48,4 +48,9 @@ enum TokenStore {
 
     static var openAIKey: String? { read("openai-token") }
     static func setOpenAIKey(_ value: String) throws { try write(value, to: "openai-token") }
+
+    // MARK: DeepSeek API key (DeepSeek engine)
+
+    static var deepseekKey: String? { read("deepseek-token") }
+    static func setDeepseekKey(_ value: String) throws { try write(value, to: "deepseek-token") }
 }

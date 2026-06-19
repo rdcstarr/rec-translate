@@ -46,9 +46,11 @@ final class PopupViewModel: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
         // Stay silent until the active engine's key is set, so auto-translate doesn't spam errors.
-        let hasKey = preferences.engine == .openai
-            ? (TokenStore.openAIKey?.isEmpty == false)
-            : (TokenStore.apiKey?.isEmpty == false)
+        let hasKey = switch preferences.engine {
+        case .openai: TokenStore.openAIKey?.isEmpty == false
+        case .deepseek: TokenStore.deepseekKey?.isEmpty == false
+        case .google: TokenStore.apiKey?.isEmpty == false
+        }
         guard hasKey else { return }
         if let current = result, current.original == trimmed { return } // already translated
         requestTranslate()
@@ -88,7 +90,22 @@ final class PopupViewModel: ObservableObject {
                 return
             }
             let model = preferences.openAIModel.trimmingCharacters(in: .whitespaces)
-            provider = OpenAIProvider(apiKey: openAIKey, model: model.isEmpty ? Preferences.defaultOpenAIModel : model)
+            provider = OpenAICompatibleProvider(
+                endpoint: ChatCompletionsEndpoint.openAI,
+                apiKey: openAIKey,
+                model: model.isEmpty ? Preferences.defaultOpenAIModel : model
+            )
+        case .deepseek:
+            guard let deepseekKey = TokenStore.deepseekKey, !deepseekKey.isEmpty else {
+                errorMessage = TranslationError.missingDeepSeekKey.errorDescription
+                return
+            }
+            let model = preferences.deepseekModel.trimmingCharacters(in: .whitespaces)
+            provider = OpenAICompatibleProvider(
+                endpoint: ChatCompletionsEndpoint.deepSeek,
+                apiKey: deepseekKey,
+                model: model.isEmpty ? Preferences.defaultDeepSeekModel : model
+            )
         case .google:
             guard let baseURL = preferences.baseURL else {
                 errorMessage = TranslationError.invalidBaseURL.errorDescription

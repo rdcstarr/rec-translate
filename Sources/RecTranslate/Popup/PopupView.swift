@@ -101,6 +101,8 @@ struct PopupView: View {
 
             Spacer()
 
+            enginePicker
+
             Button {
                 if picking != nil {
                     // A language chooser is covering the content — close it and reveal history.
@@ -150,6 +152,34 @@ struct PopupView: View {
             .help(updater.availableUpdate != nil ? "Update available — open menu to install" : "More")
         }
         .foregroundStyle(.secondary)
+    }
+
+    /// Compact dropdown to switch the translation engine per translation (the active result
+    /// re-translates via the existing .onChange(of: preferences.engine)).
+    private var enginePicker: some View {
+        Menu {
+            ForEach(TranslationEngine.allCases) { engine in
+                Button {
+                    preferences.engine = engine
+                } label: {
+                    if preferences.engine == engine {
+                        Label(engine.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(engine.displayName)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text(preferences.engine.shortName)
+                Image(systemName: "chevron.down").font(.caption2).opacity(Theme.Opacity.chevron)
+            }
+        }
+        .menuStyle(.button)
+        .buttonStyle(.appHover)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Translation engine")
     }
 
     private func languageButton(_ field: PickerField) -> some View {
@@ -276,7 +306,7 @@ struct PopupView: View {
             ZStack(alignment: .topLeading) {
                 if vm.inputText.isEmpty {
                     Text("Type or paste text to translate…")
-                        .font(Theme.Fonts.largeBody)
+                        .font(.system(size: CGFloat(preferences.fontSizeBody)))
                         .foregroundStyle(.tertiary)
                         .padding(.top, 2) // align with the text view's container inset
                         .allowsHitTesting(false)
@@ -284,6 +314,7 @@ struct PopupView: View {
                 // NSTextView-backed: Return translates, Shift+Return = newline at the cursor, Esc closes.
                 MultilineTextField(
                     text: $vm.inputText,
+                    fontSize: CGFloat(preferences.fontSizeBody),
                     minHeight: 30,
                     maxHeight: 170,
                     focusTick: inputFocusTick,
@@ -312,13 +343,16 @@ struct PopupView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Copy sits next to the text (top-right), so there's no floating empty header line.
+            // Copy sits next to the text (top-right); the text scrolls inside a capped area so a long
+            // result can't grow the window past the screen (which also caused the huge/empty reopen).
             HStack(alignment: .top, spacing: 8) {
-                Text(result.translation)
-                    .font(Theme.Fonts.largeBody)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true) // show ALL lines (don't clip to one)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                ScrollView {
+                    Text(result.translation)
+                        .font(.system(size: CGFloat(preferences.fontSizeBody)))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: Theme.Metrics.resultMaxHeight)
                 copyButton
             }
         }

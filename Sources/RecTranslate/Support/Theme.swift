@@ -42,6 +42,7 @@ enum Theme {
         static let historyRowVPadding: CGFloat = 6
         static let cardWidth: CGFloat = 600
         static let scrollMaxHeight: CGFloat = 260
+        static let resultMaxHeight: CGFloat = 320 // long translations scroll instead of growing the window
         static let settingsWidth: CGFloat = 480
         static let cardShadowRadius: CGFloat = 26
         static let cardShadowY: CGFloat = 12
