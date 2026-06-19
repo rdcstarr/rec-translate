@@ -1,7 +1,7 @@
 import Foundation
 
-/// Abstraction over a translation backend. One concrete implementation today
-/// (`RecAppTranslationProvider`); a future `OpenAIProvider` could drop in here without
+/// Abstraction over a translation backend. Implementations: `ProxyTranslateProvider` (Google via
+/// proxy123) and `OpenAICompatibleProvider` (OpenAI / DeepSeek). New backends drop in here without
 /// touching callers.
 protocol TranslationProvider: Sendable {
     /// Translate `text` from `source` to `target`. `source` may be `auto` (the server detects it).
