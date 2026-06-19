@@ -7,6 +7,9 @@ import AppKit
 struct MultilineTextField: NSViewRepresentable {
     @Binding var text: String
     var fontSize: CGFloat = 18
+    /// Editable input (default) vs a read-only, selectable display (e.g. the result) — read-only
+    /// never grabs focus, so it can show text without stealing the keyboard from the input.
+    var isEditable: Bool = true
     var minHeight: CGFloat = 30
     var maxHeight: CGFloat = 170
     /// Bump this to (re)grab keyboard focus — e.g. on show, after clearing, or when the chooser closes.
@@ -19,6 +22,9 @@ struct MultilineTextField: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let textView = FocusableTextView()
         textView.delegate = context.coordinator
+        textView.isEditable = isEditable
+        textView.isSelectable = true
+        textView.grabsFocusOnAppear = isEditable
         textView.isRichText = false
         textView.allowsUndo = true
         textView.font = NSFont.systemFont(ofSize: fontSize)
@@ -57,7 +63,7 @@ struct MultilineTextField: NSViewRepresentable {
         if textView.font?.pointSize != fontSize {
             textView.font = NSFont.systemFont(ofSize: fontSize) // live font-size change
         }
-        if context.coordinator.lastFocusTick != focusTick {
+        if isEditable, context.coordinator.lastFocusTick != focusTick {
             context.coordinator.lastFocusTick = focusTick
             textView.window?.makeFirstResponder(textView)
         }
@@ -114,11 +120,14 @@ struct MultilineTextField: NSViewRepresentable {
     }
 }
 
-/// NSTextView that grabs keyboard focus as soon as it's placed in a window (initial autofocus).
+/// NSTextView that grabs keyboard focus as soon as it's placed in a window (initial autofocus) —
+/// but only when it's the editable input, so a read-only result doesn't steal the keyboard.
 private final class FocusableTextView: NSTextView {
+    var grabsFocusOnAppear = true
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window != nil {
+        if grabsFocusOnAppear, window != nil {
             window?.makeFirstResponder(self)
         }
     }

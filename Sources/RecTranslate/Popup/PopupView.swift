@@ -343,17 +343,18 @@ struct PopupView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Copy sits next to the text (top-right); the text scrolls inside a capped area so a long
-            // result can't grow the window past the screen (which also caused the huge/empty reopen).
+            // Copy sits next to the text (top-right). The result is a read-only NSTextView so the
+            // scroller bar is never shown (the macOS "always show scroll bars" setting overrides
+            // SwiftUI's .scrollIndicators(.hidden)); it still scrolls and stays selectable, and it
+            // caps at resultMaxHeight so a long result can't grow the window past the screen.
             HStack(alignment: .top, spacing: 8) {
-                ScrollView {
-                    Text(result.translation)
-                        .font(.system(size: CGFloat(preferences.fontSizeBody)))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: Theme.Metrics.resultMaxHeight)
-                .scrollIndicators(.hidden) // still scrolls; the bar just isn't shown
+                MultilineTextField(
+                    text: .constant(result.translation),
+                    fontSize: CGFloat(preferences.fontSizeBody),
+                    isEditable: false,
+                    minHeight: 24,
+                    maxHeight: Theme.Metrics.resultMaxHeight
+                )
                 copyButton
             }
         }
