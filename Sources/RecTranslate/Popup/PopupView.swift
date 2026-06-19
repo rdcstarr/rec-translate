@@ -353,6 +353,7 @@ struct PopupView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxHeight: Theme.Metrics.resultMaxHeight)
+                .scrollIndicators(.hidden) // still scrolls; the bar just isn't shown
                 copyButton
             }
         }

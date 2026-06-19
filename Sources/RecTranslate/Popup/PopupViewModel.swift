@@ -71,7 +71,9 @@ final class PopupViewModel: ObservableObject {
     /// Re-translate the current input when the user changes source/target (or swaps), so an
     /// already-shown result reflects the new languages instead of going stale.
     func retranslateForLanguageChange() {
-        guard result != nil else { return } // only refresh an existing translation
+        // Refresh when something is already shown — a result OR an error (e.g. switching away from an
+        // engine that wasn't configured must clear the error and translate with the new engine).
+        guard result != nil || errorMessage != nil else { return }
         guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         requestTranslate()
     }
