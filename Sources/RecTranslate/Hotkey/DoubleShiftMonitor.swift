@@ -36,12 +36,14 @@ final class DoubleShiftMonitor {
         self.handler = handler
         guard globalMonitor == nil else { return }
 
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
+        // We also watch `.keyDown` so that a real keypress between two Shifts cancels a
+        // pending tap — otherwise fast typing (e.g. two capitals) reads as a double-tap.
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
             guard let self else { return }
             MainActor.assumeIsolated { self.process(event) }
         }
         // Also catch the gesture while our own panel is the key window.
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated { self.process(event) }
             return event
@@ -58,6 +60,13 @@ final class DoubleShiftMonitor {
     }
 
     private func process(_ event: NSEvent) {
+        // Any ordinary key pressed between the two Shift taps means this isn't a clean
+        // double-tap (the user is typing) — drop the pending first tap.
+        if event.type == .keyDown {
+            lastShiftPress = 0
+            return
+        }
+
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let onlyShift = flags == .shift
         let isShiftKey = shiftKeyCodes.contains(event.keyCode)
